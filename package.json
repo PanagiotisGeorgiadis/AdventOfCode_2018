@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "init": "pulp init"
+    "init": "pulp init",
+    "start": "pulp psci",
+    "install-bower-dependencies": "bower i -S purescript-node-fs-aff purescript-aff"
   },
   "author": "Panagiotis Georgiadis",
   "license": "ISC",

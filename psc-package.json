@@ -1,0 +1,12 @@
+{
+  "name": "untitled",
+  "set": "psc-0.12.1",
+  "source": "https://github.com/PanagiotisGeorgiadis/package-sets",
+  "depends": [
+    "aff",
+    "exceptions",
+    "node-fs",
+    "prelude",
+    "strings"
+  ]
+}
