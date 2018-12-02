@@ -1,7 +1,7 @@
 module Utils.Array where
 
-import Prelude ((+), (==))
 import Data.Array as Array
+import Prelude ((+), (==))
 
 sum :: Array Int -> Int
 sum =
@@ -19,3 +19,11 @@ count needle haystack =
         )
         0
         haystack
+
+
+isEmpty :: forall a. Array a -> Boolean
+isEmpty array =
+    if Array.length array == 0 then
+        true
+    else
+        false

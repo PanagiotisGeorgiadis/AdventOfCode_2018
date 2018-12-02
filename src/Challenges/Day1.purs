@@ -13,13 +13,13 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Utils.Array as Array
 import Utils.Maybe as Maybe
-import Utils.String (lines)
+import Utils.String as String
 
 getInputLines :: Either Error String -> Array String
 getInputLines result =
     case result of
         Right res ->
-            lines res
+            String.lines res
 
         Left error ->
             []
