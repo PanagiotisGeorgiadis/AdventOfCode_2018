@@ -1,10 +1,9 @@
 module Challenges.Day3 where
 
 import Prelude
-import Data.Foldable (foldl)
-
 
 import Data.Array as Array
+import Data.Foldable (foldl)
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
@@ -14,7 +13,6 @@ import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try)
 import Node.Encoding (Encoding(..))
-import Node.FS.Async (writeTextFile)
 import Node.FS.Sync (readTextFile)
 import Utils.Helpers (getInputLines)
 import Utils.Maybe as Maybe
@@ -43,6 +41,7 @@ type FabricClaim =
     , width :: Int
     , height :: Int
     , dimensions :: Array (Array Int)
+    , indexes :: Set Int
     }
 
 
@@ -107,6 +106,11 @@ getCoords { leftOffset, topOffset, width, height } =
     in
     Array.concat
         $ map (\x -> map (\y -> [x, y]) (Array.range minY maxY)) (Array.range minX maxX)
+
+
+coordsToIndex :: Array Int -> Int
+coordsToIndex [x, y] = x * y
+coordsToIndex _      = 0
 -- getFabricDimensions :: FabricClaimPartial -> Array (Array Int)
 -- getFabricDimensions { leftOffset, topOffset, width, height } =
 --     let
@@ -157,13 +161,17 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
                     -- , minY : minY
                     -- , maxY : maxY
                     }
+
+                coords =
+                    getCoords partialClaim
             in
             { id : parseId id
             , leftOffset : leftOffset
             , topOffset : topOffset
             , width : width
             , height : height
-            , dimensions : getCoords partialClaim
+            , dimensions : coords
+            , indexes : Set.map coordsToIndex (Set.fromFoldable coords)
             -- , minY : topOffset
             -- , maxY : topOffset + height
             -- , minX : leftOffset
@@ -176,6 +184,7 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
             , width : 0
             , height : 0
             , dimensions : []
+            , indexes : Set.fromFoldable []
             -- , minY : 0
             -- , maxY : 0
             -- , minX : 0
@@ -235,10 +244,14 @@ getDuplicateCoords2 array = go (Array.nub array) array []
     where go coordSet coordArray res =
             case Array.head coordSet, Array.head coordArray of
                 Just s, Just a ->
+                    let
+                        updatedCoordArray =
+                            Array.drop 1 coordArray
+                    in
                     if s == a then
-                        go (Array.drop 1 coordSet) (Array.drop 1 coordArray) res
+                        go (Array.drop 1 coordSet) updatedCoordArray res
                     else
-                        go coordSet (Array.drop 1 coordArray) (Array.snoc res a)
+                        go coordSet updatedCoordArray (Array.snoc res a)
 
                 _, _ ->
                     Array.nub res
@@ -301,23 +314,76 @@ getDuplicateCoords2 array = go (Array.nub array) array []
 --         (Set.fromFoldable [])
 --         set
 
+commonMembers :: FabricClaim -> Array FabricClaim -> Set Int
+commonMembers { indexes } claims =
+    -- Array.foldl
+    --     (\res claim ->
+    --         Set.insert
+    --             (foldl
+    --                 (\res_ index ->
+    --                     if Set.member index indexes then
+    --                         Set.insert index res_
+    --                     else
+    --                         res_
+    --                 )
+    --                 (Set.fromFoldable [])
+    --                 indexes
+    --             )
+    --             res
+    --     )
+    --     (Set.fromFoldable [])
+    --     claims
+    Array.foldl
+        (\res claim ->
+            Set.union (Set.intersection claim.indexes indexes) res
+        )
+        (Set.fromFoldable [])
+        claims
+
+
+solve :: Array FabricClaim -> Set Int
+solve claims =
+    Array.foldl
+        (\res claim ->
+            commonMembers claim claims
+        )
+        (Set.fromFoldable [])
+        claims
+
+
+firstChallenge_ :: Effect Unit
+firstChallenge_ = do
+    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
+    Console.log
+        $ show
+        $ Set.size
+        $ solve
+        $ Array.take 15000
+        -- $ countDuplicateCoords
+        -- $ Array.length
+        -- $ getDuplicateCoords
+        -- $ getDuplicateCoords2
+        -- $ Array.sort
+        -- $ getDuplicateCoords
+        -- $ Array.concat
+        -- $ map _.dimensions (_ + 1) (case _ of ...) (if _ then a else b)
+        -- $ map _.dimensions
+        $ map parseFabricClaim
+        $ map (StringUtils.removeAll "\r")
+        $ getInputLines contents
+
 
 firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
-    -- _ <- (writeTextFile UTF8 "./src/PuzzleInputs/Day3a.txt") $ Array.concat $ map _.dimensions $ map parseFabricClaim $ map (StringUtils.removeAll "\r") $ getInputLines contents
     Console.log
         $ show
         -- $ countDuplicateCoords
         -- $ Array.length
         -- $ Array.fromFoldable
-        -- $ Set.size
         -- $ getDuplicateCoords
         $ getDuplicateCoords2
-        $ Set.fromFoldable
         $ Array.sort
-        -- $ Array.take 200000
-        $ Array.take 150000
         -- $ getDuplicateCoords
         $ Array.concat
         -- $ map _.dimensions (_ + 1) (case _ of ...) (if _ then a else b)
