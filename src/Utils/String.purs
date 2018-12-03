@@ -6,8 +6,8 @@ import Data.String.Pattern (Pattern(..), Replacement(..))
 
 
 lines :: String -> Array String
-lines str =
-    String.split (Pattern "\n") str
+lines =
+    String.split (Pattern "\n")
 
 
 isEmpty :: String -> Boolean
