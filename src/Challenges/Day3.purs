@@ -3,12 +3,14 @@ module Challenges.Day3 where
 import Prelude
 
 import Data.Array as Array
-import Data.Foldable (foldl)
 import Data.Int as Int
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try)
@@ -17,22 +19,30 @@ import Node.FS.Sync (readTextFile)
 import Utils.Helpers (getInputLines)
 import Utils.Maybe as Maybe
 import Utils.String as StringUtils
---import Utils.Array as Array
---import Utils.Helpers (getInputLines)
+
+
+newtype Fabric = Fabric (Array { index :: Int, overlaps :: Int })
+
+instance showFabric :: Show Fabric
+    where show (Fabric fabrics) = String.joinWith "\n" $ map show fabrics
+
+-- newtype FabricInch = FabricInch { index :: Int, overlaps :: Int }
+--
+-- instance showFabricInch :: Show FabricInch
+--     where show (FabricInch fabricInch) = show fabricInch
+--
+-- instance eq :: Eq FabricInch
+--     where eq (FabricInch a) (FabricInch b) = a.index == b.index
+--
+-- instance compare :: Ord FabricInch
+--     where compare (FabricInch a) (FabricInch b) = compare a.index b.index
 
 type FabricClaimPartial =
     { leftOffset :: Int
     , topOffset :: Int
     , width :: Int
     , height :: Int
-    -- , minY :: Int
-    -- , maxY :: Int
-    -- , minX :: Int
-    -- , maxX :: Int
     }
-
--- type Dimension =
---     Tuple Int Int
 
 type FabricClaim =
     { id :: Int
@@ -40,10 +50,9 @@ type FabricClaim =
     , topOffset :: Int
     , width :: Int
     , height :: Int
-    , dimensions :: Array (Array Int)
-    , indexes :: Set Int
+    , coords :: Array (Tuple Int Int)
+    , indexes :: Array Int
     }
-
 
 parseId :: String -> Int
 parseId str =
@@ -89,39 +98,36 @@ parseHeight str =
         $ String.split (String.Pattern "x") str
 
 
-getCoords :: FabricClaimPartial -> Array (Array Int)
+getCoords :: FabricClaimPartial -> Array (Tuple Int Int)
 getCoords { leftOffset, topOffset, width, height } =
     let
         minY =
             topOffset
 
         maxY =
-            topOffset + height
+            topOffset + height - 1
 
         minX =
             leftOffset
 
         maxX =
-            leftOffset + width
+            leftOffset + width - 1
     in
     Array.concat
-        $ map (\x -> map (\y -> [x, y]) (Array.range minY maxY)) (Array.range minX maxX)
+        $ map
+            (\x ->
+                map
+                    (\y ->
+                        Tuple x y
+                    )
+                    (Array.range minY maxY)
+            )
+            (Array.range minX maxX)
 
 
-coordsToIndex :: Array Int -> Int
-coordsToIndex [x, y] = x * y
-coordsToIndex _      = 0
--- getFabricDimensions :: FabricClaimPartial -> Array (Array Int)
--- getFabricDimensions { leftOffset, topOffset, width, height } =
---     let
---         one =
---             Array.range leftOffset (leftOffset + width)
---
---         two =
---             Array.range topOffset (topOffset + height)
---     in
---     Array.concat
---         $ map (\x -> map (\y -> [x,y]) two) one
+coordsToIndex :: Tuple Int Int -> Int
+coordsToIndex (Tuple x y) = (x * 1000) + y + 1
+
 
 parseFabricClaim :: String -> FabricClaim
 parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
@@ -156,10 +162,6 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
                     , topOffset : topOffset
                     , width : width
                     , height : height
-                    -- , minX : minX
-                    -- , maxX : maxX
-                    -- , minY : minY
-                    -- , maxY : maxY
                     }
 
                 coords =
@@ -170,12 +172,8 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
             , topOffset : topOffset
             , width : width
             , height : height
-            , dimensions : coords
-            , indexes : Set.map coordsToIndex (Set.fromFoldable coords)
-            -- , minY : topOffset
-            -- , maxY : topOffset + height
-            -- , minX : leftOffset
-            -- , maxX : leftOffset + width
+            , coords : coords
+            , indexes : map coordsToIndex coords
             }
           go _ =
             { id : 0
@@ -183,219 +181,77 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
             , topOffset : 0
             , width : 0
             , height : 0
-            , dimensions : []
-            , indexes : Set.fromFoldable []
-            -- , minY : 0
-            -- , maxY : 0
-            -- , minX : 0
-            -- , maxX : 0
+            , coords : []
+            , indexes : []
             }
 
 
-removeCoord :: Array Int -> Array (Array Int) -> Array (Array Int)
-removeCoord coord =
-    Array.filter ((/=) coord)
+fabricMap :: Map Int Int
+fabricMap =
+    Map.fromFoldable
+        $ map (\index -> Tuple index 0) (Array.range 1 1000000)
 
 
-countDuplicateCoords :: Array (Array Int) -> Int
-countDuplicateCoords = go 0
-    where go count coords =
-            case Array.head coords of
-                Just c ->
-                    let
-                        updatedCount =
-                            if Array.any ((==) c) (Array.drop 1 coords) then
-                                count + 1
-                            else
-                                count
-                    in
-                    go updatedCount (removeCoord c coords)
-
-                Nothing ->
-                    count
+countOverlappingInches :: Map Int Int -> Int
+countOverlappingInches inches =
+    Array.length
+        $ Array.filter (\item -> item > 1)
+        $ (Array.fromFoldable inches)
 
 
--- getDuplicateCoords :: Array (Array Int) -> Array (Array Int)
--- getDuplicateCoords = go []
---     where go res array =
---             case Array.head array of
---                 Just elem ->
---                     let
---                         updatedArray =
---                             Array.drop 1 array
---                     in
---                     if Array.any ((==) elem) updatedArray then
---                         go (res <> [elem]) (removeCoord elem updatedArray)
---                     else
---                         go res updatedArray
---
---                 Nothing ->
---                     res
-
-
-isDuplicate :: Array Int -> Array (Array Int) -> Boolean
-isDuplicate dimension array =
-    Array.elemIndex dimension array /= Array.elemLastIndex dimension array
-
-
--- 11899
-getDuplicateCoords2 :: Array (Array Int) -> Array (Array Int)
-getDuplicateCoords2 array = go (Array.nub array) array []
-    where go coordSet coordArray res =
-            case Array.head coordSet, Array.head coordArray of
-                Just s, Just a ->
-                    let
-                        updatedCoordArray =
-                            Array.drop 1 coordArray
-                    in
-                    if s == a then
-                        go (Array.drop 1 coordSet) updatedCoordArray res
-                    else
-                        go coordSet updatedCoordArray (Array.snoc res a)
-
-                _, _ ->
-                    Array.nub res
-
-            -- if Array.take 1 coordSet == Array.take 1 coordArray then
-            --     go (Array.drop 1 coordSet) (Array.drop 1 coordArray) (res <> Array.take 1 coordSet)
-            -- else
-            --     go coordSet (Array.drop 1 coordArray) res
-            --
-            -- Array.foldl
-            --     (\res item ->
-            --         -- if coordArray
-            --         res <> [ item ]
-            --         -- Array.snoc res item
-            --     )
-            --     []
-            --     coordSet
-            --
-    -- Array.foldl
-    --     (\res item ->
-    --         -- if isDuplicate item array && Array.elemIndex item res == Nothing then
-    --         --     Array.snoc res item
-    --         -- else
-    --         --     res
-    --     )
-    --     []
-    --     array
-
-            -- if Array.elemIndex item res == Nothing then
-            -- if Array.nubEq
-                -- Array.snoc res item
-            -- else
-                -- res
--- countOverlappingInches :: FabricClaim -> FabricClaim -> Int
--- countOverlappingInches claim claim_ = go (getCoords claim) (getCoords claim_) 0
---     where go coords coords_ count =
---             case Array.head coords of
---                 Just h ->
---                     let
---                         updatedCount =
---                             if Array.any ((==) h) coords then
---                                 count + 1
---                             else
---                                 count
---                     in
---                     go (Array.drop 1 coords) coords_ updatedCount
---
---                 Nothing ->
---                     count
-
--- getDuplicateCoords :: Set (Array Int) -> Set (Array Int)
--- getDuplicateCoords set =
---     foldl
---         (\res item ->
---             if Set.member item $ Set.delete item set then
---                 Set.insert item res
---             else
---                 res
---         )
---         (Set.fromFoldable [])
---         set
-
-commonMembers :: FabricClaim -> Array FabricClaim -> Set Int
-commonMembers { indexes } claims =
-    -- Array.foldl
-    --     (\res claim ->
-    --         Set.insert
-    --             (foldl
-    --                 (\res_ index ->
-    --                     if Set.member index indexes then
-    --                         Set.insert index res_
-    --                     else
-    --                         res_
-    --                 )
-    --                 (Set.fromFoldable [])
-    --                 indexes
-    --             )
-    --             res
-    --     )
-    --     (Set.fromFoldable [])
-    --     claims
+drawClaimsOnFabric :: Array FabricClaim -> Map Int Int
+drawClaimsOnFabric claims =
+    let
+        indexes =
+            Array.concat
+                $ map _.indexes claims
+    in
     Array.foldl
-        (\res claim ->
-            Set.union (Set.intersection claim.indexes indexes) res
+        (\res index ->
+            Map.update (\v -> Just (v + 1)) index res
         )
-        (Set.fromFoldable [])
-        claims
+        fabricMap
+        indexes
 
-
-solve :: Array FabricClaim -> Set Int
-solve claims =
-    Array.foldl
-        (\res claim ->
-            commonMembers claim claims
-        )
-        (Set.fromFoldable [])
-        claims
-
-
-firstChallenge_ :: Effect Unit
-firstChallenge_ = do
-    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
-    Console.log
-        $ show
-        $ Set.size
-        $ solve
-        $ Array.take 15000
-        -- $ countDuplicateCoords
-        -- $ Array.length
-        -- $ getDuplicateCoords
-        -- $ getDuplicateCoords2
-        -- $ Array.sort
-        -- $ getDuplicateCoords
-        -- $ Array.concat
-        -- $ map _.dimensions (_ + 1) (case _ of ...) (if _ then a else b)
-        -- $ map _.dimensions
-        $ map parseFabricClaim
-        $ map (StringUtils.removeAll "\r")
-        $ getInputLines contents
-
-
+-- 175642 -- Too high
+-- 8755 -- Not Correct >_<
+-- 109785 -- YES
 firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
     Console.log
         $ show
-        -- $ countDuplicateCoords
-        -- $ Array.length
-        -- $ Array.fromFoldable
-        -- $ getDuplicateCoords
-        $ getDuplicateCoords2
-        $ Array.sort
-        -- $ getDuplicateCoords
-        $ Array.concat
-        -- $ map _.dimensions (_ + 1) (case _ of ...) (if _ then a else b)
-        $ map _.dimensions
+        $ countOverlappingInches
+        $ drawClaimsOnFabric
         $ map parseFabricClaim
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
 
 
+findNonOverlappingClaim :: Array FabricClaim -> Map Int Int -> Int
+findNonOverlappingClaim claims fabricMap =
+    Array.foldl
+        (\res claim ->
+            let
+                indexValues =
+                    map (\index -> Map.lookup index fabricMap) claim.indexes
+            in
+            if Array.all ((==) (Just 1)) indexValues then
+                claim.id
+            else
+                res
+        )
+        0
+        claims
+
+
+-- 504 -- YES
 secondChallenge :: Effect Unit
 secondChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
     Console.log
         $ show
+        $ (\claims -> findNonOverlappingClaim claims (drawClaimsOnFabric claims))
+        $ map parseFabricClaim
+        $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
