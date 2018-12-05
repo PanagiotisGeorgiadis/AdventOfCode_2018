@@ -5,6 +5,7 @@ import Prelude
 import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String (CodePoint)
@@ -17,7 +18,6 @@ import Effect.Exception (try)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Utils.Helpers (getInputLines)
-import Utils.Maybe as Maybe
 import Utils.String as StringUtils
 
 
@@ -73,7 +73,7 @@ firstChallenge = do
         $ show
         $ String.length
         $ eliminateReactions
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
@@ -97,6 +97,9 @@ eliminateSpecificReaction letter input = go input
 findShortestPolymer :: String -> String
 findShortestPolymer input =
     let
+        inputLength =
+            String.length input
+
         polymers =
             map eliminateReactions
             $ Array.filter (\item -> String.length item /= String.length input)
@@ -113,8 +116,9 @@ findShortestPolymer input =
             else
                 res
         )
-        (String.joinWith "" $ Array.replicate 50000 "0")
+        (String.joinWith "" $ Array.replicate inputLength "0")
         polymers
+
 
 -- 6310
 secondChallenge :: Effect Unit
@@ -124,7 +128,7 @@ secondChallenge = do
         $ show
         $ String.length
         $ findShortestPolymer
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents

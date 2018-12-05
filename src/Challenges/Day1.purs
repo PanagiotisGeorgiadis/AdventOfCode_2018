@@ -10,7 +10,6 @@ import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
 import Data.Set (Set)
 import Data.Set as Set
-import Debug.Trace as Debug
 import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try, Error)

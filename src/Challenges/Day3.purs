@@ -7,6 +7,7 @@ import Data.Int as Int
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
@@ -17,7 +18,6 @@ import Effect.Exception (try)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Utils.Helpers (getInputLines)
-import Utils.Maybe as Maybe
 import Utils.String as StringUtils
 
 
@@ -56,24 +56,24 @@ type FabricClaim =
 
 parseId :: String -> Int
 parseId str =
-    Maybe.withDefault 0 $ Int.fromString $ String.drop 1 str
+    Maybe.fromMaybe 0 $ Int.fromString $ String.drop 1 str
 
 
 parseLeftOffset :: String -> Int
 parseLeftOffset str =
-    Maybe.withDefault 0
+    Maybe.fromMaybe 0
         $ Int.fromString
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ String.split (String.Pattern ",") str
 
 
 parseTopOffset :: String -> Int
 parseTopOffset str =
-    Maybe.withDefault 0
+    Maybe.fromMaybe 0
         $ Int.fromString
         $ StringUtils.removeAll ":"
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ Array.drop 1
         $ String.split (String.Pattern ",") str
@@ -81,18 +81,18 @@ parseTopOffset str =
 
 parseWidth :: String -> Int
 parseWidth str =
-    Maybe.withDefault 0
+    Maybe.fromMaybe 0
         $ Int.fromString
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ String.split (String.Pattern "x") str
 
 
 parseHeight :: String -> Int
 parseHeight str =
-    Maybe.withDefault 0
+    Maybe.fromMaybe 0
         $ Int.fromString
-        $ Maybe.withDefault ""
+        $ Maybe.fromMaybe ""
         $ Array.head
         $ Array.reverse
         $ String.split (String.Pattern "x") str

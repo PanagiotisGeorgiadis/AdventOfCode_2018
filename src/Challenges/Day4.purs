@@ -6,19 +6,18 @@ import Data.Array ((..))
 import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import Data.Tuple as Tuple
--- import Debug.Trace as Debug
 import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Utils.Helpers (getInputLines)
-import Utils.Maybe as Maybe
 import Utils.String as StringUtils
 
 type Guidelines =
@@ -65,10 +64,10 @@ parseDate line =
     let
         dateStr =
             StringUtils.removeAll "["
-                $ Maybe.withDefault ""
+                $ Maybe.fromMaybe ""
                 $ Array.head
                 $ String.split (String.Pattern " ")
-                $ Maybe.withDefault ""
+                $ Maybe.fromMaybe ""
                 $ Array.head
                 $ String.split (String.Pattern "] ") line
 
@@ -76,7 +75,7 @@ parseDate line =
             String.split (String.Pattern "-") dateStr
 
         parseInt =
-            Maybe.withDefault 0 <<< Int.fromString <<< Maybe.withDefault ""
+            Maybe.fromMaybe 0 <<< Int.fromString <<< Maybe.fromMaybe ""
     in
     { year : parseInt $ Array.head dateArray
     , month : parseInt $ Array.head $ Array.drop 1 dateArray
@@ -88,11 +87,11 @@ parseTime :: String -> Time
 parseTime line =
     let
         timeStr =
-            Maybe.withDefault ""
+            Maybe.fromMaybe ""
                 $ Array.head
                 $ Array.drop 1
                 $ String.split (String.Pattern " ")
-                $ Maybe.withDefault ""
+                $ Maybe.fromMaybe ""
                 $ Array.head
                 $ String.split (String.Pattern "] ") line
 
@@ -100,7 +99,7 @@ parseTime line =
             String.split (String.Pattern ":") timeStr
 
         parseInt =
-            Maybe.withDefault 0 <<< Int.fromString <<< Maybe.withDefault ""
+            Maybe.fromMaybe 0 <<< Int.fromString <<< Maybe.fromMaybe ""
     in
     { hours : parseInt $ Array.head timeArray
     , minutes : parseInt $ Array.head $ Array.drop 1 timeArray
@@ -111,7 +110,7 @@ parseGuardAction :: String -> GuardAction
 parseGuardAction line =
     let
         actionStr =
-            Maybe.withDefault ""
+            Maybe.fromMaybe ""
                 $ Array.head
                 $ Array.drop 1
                 $ String.split (String.Pattern "] ") line
@@ -124,12 +123,12 @@ parseGuardAction line =
         _ ->
             let
                 guardId =
-                    Maybe.withDefault 0
+                    Maybe.fromMaybe 0
                         $ Int.fromString
-                        $ Maybe.withDefault ""
+                        $ Maybe.fromMaybe ""
                         $ Array.head
                         $ String.split (String.Pattern " ")
-                        $ Maybe.withDefault ""
+                        $ Maybe.fromMaybe ""
                         $ Array.head
                         $ Array.drop 1
                         $ String.split (String.Pattern "#" ) actionStr
@@ -280,6 +279,20 @@ getId :: Guard -> Int
 getId (Guard guard) = guard.id
 
 
+getValidTime :: Int -> Time
+getValidTime min =
+    let
+        min_ =
+            if min > 59 then
+                min - 60
+            else
+                min
+    in
+    { hours : 0
+    , minutes : min_
+    }
+
+
 parseGuardShifts :: Array Guidelines -> Set Guard
 parseGuardShifts = go (Set.empty) 0 initialDateTime
     where go guards lastId lastDateTime guidelines =
@@ -298,21 +311,11 @@ parseGuardShifts = go (Set.empty) 0 initialDateTime
                                     minutesDifference =
                                         getMinuteDifference time guideline.time - 1
 
+                                    maxMinutes =
+                                        time.minutes + minutesDifference
+
                                     newTimes =
-                                        map
-                                            (\min ->
-                                                let
-                                                    min_ =
-                                                        if min > 59 then
-                                                            min - 60
-                                                        else
-                                                            min
-                                                in
-                                                { hours : 0
-                                                , minutes : min_
-                                                }
-                                            )
-                                            (Array.range time.minutes (time.minutes + minutesDifference))
+                                        map getValidTime (Array.range time.minutes maxMinutes)
 
                                     updatedGuards =
                                         Set.map
