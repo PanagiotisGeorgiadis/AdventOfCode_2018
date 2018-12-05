@@ -2,9 +2,10 @@ module Challenges.Day3a where
 
 import Prelude
 
-import Control.Monad.Gen (resize)
 import Data.Array as Array
 import Data.Int as Int
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
@@ -20,36 +21,28 @@ import Utils.Maybe as Maybe
 import Utils.String as StringUtils
 
 
--- newtype Fabric = Fabric (Array { x :: Int, y :: Int, overlaps :: Int })
 newtype Fabric = Fabric (Array { index :: Int, overlaps :: Int })
 
 instance showFabric :: Show Fabric
     where show (Fabric fabrics) = String.joinWith "\n" $ map show fabrics
 
-newtype FabricInch = FabricInch { index :: Int, overlaps :: Int }
-
-instance showFabricInch :: Show FabricInch
-    where show (FabricInch fabricInch) = show fabricInch
-
-instance eq :: Eq FabricInch
-    where eq (FabricInch a) (FabricInch b) = a.index == b.index
-
-instance compare :: Ord FabricInch
-    where compare (FabricInch a) (FabricInch b) = compare a.index b.index
+-- newtype FabricInch = FabricInch { index :: Int, overlaps :: Int }
+--
+-- instance showFabricInch :: Show FabricInch
+--     where show (FabricInch fabricInch) = show fabricInch
+--
+-- instance eq :: Eq FabricInch
+--     where eq (FabricInch a) (FabricInch b) = a.index == b.index
+--
+-- instance compare :: Ord FabricInch
+--     where compare (FabricInch a) (FabricInch b) = compare a.index b.index
 
 type FabricClaimPartial =
     { leftOffset :: Int
     , topOffset :: Int
     , width :: Int
     , height :: Int
-    -- , minY :: Int
-    -- , maxY :: Int
-    -- , minX :: Int
-    -- , maxX :: Int
     }
-
--- type Dimension =
---     Tuple Int Int
 
 type FabricClaim =
     { id :: Int
@@ -58,7 +51,6 @@ type FabricClaim =
     , width :: Int
     , height :: Int
     , coords :: Array (Tuple Int Int)
-    -- , dimensions :: Array (Array Int)
     , indexes :: Array Int
     }
 
@@ -113,16 +105,14 @@ getCoords { leftOffset, topOffset, width, height } =
             topOffset
 
         maxY =
-            topOffset + height
+            topOffset + height - 1
 
         minX =
             leftOffset
 
         maxX =
-            leftOffset + width
+            leftOffset + width - 1
     in
-    -- Array.concat
-        -- $ map (\x -> map (\y -> [x, y]) (Array.range minY maxY)) (Array.range minX maxX)
     Array.concat
         $ map
             (\x ->
@@ -136,7 +126,7 @@ getCoords { leftOffset, topOffset, width, height } =
 
 
 coordsToIndex :: Tuple Int Int -> Int
-coordsToIndex (Tuple x y) = x * y
+coordsToIndex (Tuple x y) = (x * 1000) + y + 1
 
 
 parseFabricClaim :: String -> FabricClaim
@@ -172,10 +162,6 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
                     , topOffset : topOffset
                     , width : width
                     , height : height
-                    -- , minX : minX
-                    -- , maxX : maxX
-                    -- , minY : minY
-                    -- , maxY : maxY
                     }
 
                 coords =
@@ -187,12 +173,7 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
             , width : width
             , height : height
             , coords : coords
-            -- , dimensions : coords
             , indexes : map coordsToIndex coords
-            -- , minY : topOffset
-            -- , maxY : topOffset + height
-            -- , minX : leftOffset
-            -- , maxX : leftOffset + width
             }
           go _ =
             { id : 0
@@ -201,169 +182,76 @@ parseFabricClaim claim = go (String.split (String.Pattern " ") claim)
             , width : 0
             , height : 0
             , coords : []
-            -- , dimensions : []
             , indexes : []
-            -- , minY : 0
-            -- , maxY : 0
-            -- , minX : 0
-            -- , maxX : 0
             }
 
-fabricTake :: Int -> Fabric -> Fabric
-fabricTake count (Fabric fabric) =
-    Fabric (Array.take count fabric)
 
-initialFabric :: Fabric
-initialFabric =
-    -- Fabric
-    --     $ Array.concat
-    --     $ map
-    --         (\x ->
-    --             map
-    --                 (\y ->
-    --                     { x : x
-    --                     , y : y
-    --                     , overlaps : 0
-    --                     }
-    --                 )
-    --                 (Array.range 0 999)
-    --         )
-    --         (Array.range 0 999)
-    Fabric
-        $ Array.concat
-        $ map
-            (\x ->
-                map
-                    (\y ->
-                        { index : x * y
-                        , overlaps : 0
-                        }
-                    )
-                    (Array.range 1 1000)
-            )
-            (Array.range 1 1000)
+fabricMap :: Map Int Int
+fabricMap =
+    Map.fromFoldable
+        $ map (\index -> Tuple index 0) (Array.range 1 1000000)
 
-addClaimOnFabric :: Int -> Fabric -> Fabric
-addClaimOnFabric index (Fabric fabric) =
-    Fabric
-        $ map
-            (\inch ->
-                if inch.index == index then
-                    inch { overlaps = inch.overlaps + 1 }
-                else
-                    inch
-            )
-            fabric
 
--- applyFabricClaims :: Array FabricClaim -> Fabric
--- applyFabricClaims =
---     Array.foldl
---         (\fabric claim ->
---             Array.foldl
---                 (\res index ->
---                     addClaimOnFabric index res
---                 )
---                 fabric
---                 claim.indexes
---         )
---         initialFabric
+countOverlappingInches :: Map Int Int -> Int
+countOverlappingInches inches =
+    Array.length
+        $ Array.filter (\item -> item > 1)
+        $ (Array.fromFoldable inches)
 
-applyFabricClaims :: Array Int -> Fabric
-applyFabricClaims =
-    Array.foldl
-        (\fabric index ->
-            -- Array.foldl
-                -- (\res index ->
-                    addClaimOnFabric index fabric
-                -- )
-                -- fabric
-                -- claim.indexes
-        )
-        initialFabric
 
-initialFabricInch :: Set FabricInch
-initialFabricInch =
-    Set.singleton (FabricInch { index : 0, overlaps : 0 })
-
-incrementOverlap :: Int -> Set FabricInch -> Set FabricInch
-incrementOverlap index =
-    Set.map
-        (\(FabricInch fabricInch) ->
-            if fabricInch.index == index then
-                FabricInch (fabricInch { overlaps = fabricInch.overlaps + 1 })
-            else
-                (FabricInch fabricInch)
-        )
-
--- fabric indexes == 543780
--- fabric indexes == 543780
-solve :: Array Int -> Set FabricInch
-solve =
+drawClaimsOnFabric :: Array FabricClaim -> Map Int Int
+drawClaimsOnFabric claims =
+    let
+        indexes =
+            Array.concat
+                $ map _.indexes claims
+    in
     Array.foldl
         (\res index ->
-            let
-                tempInch =
-                    (FabricInch { index : index, overlaps : 0 })
-            in
-            if Set.member tempInch res then
-                incrementOverlap index res
-            else
-                Set.insert tempInch res
+            Map.update (\v -> Just (v + 1)) index res
         )
-        initialFabricInch
+        fabricMap
+        indexes
 
-
-
--- countOverlappingInches :: Fabric -> Int
--- countOverlappingInches (Fabric fabric) =
---     Array.foldl
---         (\res inch ->
---             if inch.overlaps > 1 then
---                 res + 1
---             else
---                 res
---         )
---         0
---         fabric
-
-
-countOverlappingInches :: Set FabricInch -> Int
-countOverlappingInches inches =
-    Array.foldl
-        (\res (FabricInch inch) ->
-            if inch.overlaps > 1 then
-                res + 1
-            else
-                res
-        )
-        0
-        (Array.fromFoldable inches)
-
--- fabric claims  == 1323
--- fabric indexes == 543780
--- Fabric indexes == 1000000
+-- 175642 -- Too high
+-- 8755 -- Not Correct >_<
+-- 109785 -- YES
 firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
     Console.log
         $ show
-        -- $ Array.length
-        -- $ Array.concat
-        -- $ map _.indexes
         $ countOverlappingInches
-        -- $ applyFabricClaims
-        $ solve
-        $ Array.concat
-        $ map _.indexes
+        $ drawClaimsOnFabric
         $ map parseFabricClaim
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
 
 
+findNonOverlappingClaim :: Array FabricClaim -> Map Int Int -> Int
+findNonOverlappingClaim claims fabricMap =
+    Array.foldl
+        (\res claim ->
+            let
+                indexValues =
+                    map (\index -> Map.lookup index fabricMap) claim.indexes
+            in
+            if Array.all ((==) (Just 1)) indexValues then
+                claim.id
+            else
+                res
+        )
+        0
+        claims
+
+
+-- 504 -- YES
 secondChallenge :: Effect Unit
 secondChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day3.txt")
     Console.log
         $ show
+        $ (\claims -> findNonOverlappingClaim claims (drawClaimsOnFabric claims))
+        $ map parseFabricClaim
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
