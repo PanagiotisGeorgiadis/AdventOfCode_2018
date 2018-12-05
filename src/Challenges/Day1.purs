@@ -4,72 +4,98 @@ import Prelude
 
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Int (fromString)
+import Data.Foldable (sum)
+import Data.Int as Int
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
+import Data.Set (Set)
+import Data.Set as Set
+import Debug.Trace as Debug
 import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try, Error)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
-import Utils.Array as Array
-import Utils.Maybe as Maybe
-import Utils.String as String
+import Utils.Helpers (getInputLines)
+import Utils.String as StringUtils
 
-getInputLines :: Either Error String -> Array String
-getInputLines result =
-    case result of
-        Right res ->
-            String.lines res
 
-        Left error ->
-            []
-
--- 543
 parseFrequencies :: Array String -> Array Int
 parseFrequencies =
-    map
-        (\line ->
-            Maybe.withDefault 0 (fromString line)
-        )
+    map (Maybe.fromMaybe 0 <<< Int.fromString)
 
 
+-- 543
 firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day1.txt")
-    Console.log $ show $ Array.sum $ parseFrequencies $ getInputLines contents
+    Console.log
+        $ show
+        $ sum
+        $ parseFrequencies
+        $ map (StringUtils.removeAll "\r")
+        $ getInputLines contents
 
 
-calculateResults :: Array Int -> Int
-calculateResults freqs = go freqs [0]
-    where go rem past =
+type DuplicationDetector =
+        { frequencyHistory :: Set Int
+        , latestFreq :: Int
+        , shouldTerminate :: Boolean
+        }
+
+
+initialDuplicateDetector :: DuplicationDetector
+initialDuplicateDetector =
+        { frequencyHistory : (Set.fromFoldable [0])
+        , latestFreq : 0
+        , shouldTerminate : false
+        }
+
+
+findDuplicateFrequency :: Array Int -> Int
+findDuplicateFrequency = go initialDuplicateDetector
+    where go duplicateDetector freqs =
             let
-                remItem =
-                    Array.head rem
+                detector =
+                    Array.foldl
+                        (\detector item ->
+                            let
+                                newFrequency =
+                                    detector.latestFreq + item
+                            in
+                            if detector.shouldTerminate then
+                                detector
 
-                latestResult =
-                    Array.head $ Array.reverse past
+                            else if Set.member newFrequency detector.frequencyHistory then
+                                detector
+                                    { shouldTerminate = true
+                                    , latestFreq = newFrequency
+                                    , frequencyHistory = Set.insert (newFrequency + 1) detector.frequencyHistory
+                                    }
+
+                            else
+                                detector
+                                    { shouldTerminate = false
+                                    , latestFreq = newFrequency
+                                    , frequencyHistory = Set.insert newFrequency detector.frequencyHistory
+                                    }
+                        )
+                        duplicateDetector
+                        freqs
             in
-            case remItem, latestResult of
-                Just item, Just latest ->
-                    let
-                        newResult =
-                            latest + item
-                    in
-                    if (Array.any ((==) newResult) past) then
-                        newResult
-                    else
-                        go (Array.drop 1 rem) (Array.snoc past (latest + item))
+            if detector.shouldTerminate then
+                detector.latestFreq
+            else
+                go detector freqs
 
-                _, _ ->
-                    go freqs past
-
-
-sanitizeFrequencies :: Array Int -> Array Int
-sanitizeFrequencies =
-    Array.filter ((/=) 0)
 
 -- 621
 secondChallenge :: Effect Unit
 secondChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day1.txt")
-    Console.log $ show $ calculateResults $ sanitizeFrequencies $ parseFrequencies $ getInputLines contents
+    Console.log
+        $ show
+        $ findDuplicateFrequency
+        $ parseFrequencies
+        $ map (StringUtils.removeAll "\r")
+        $ getInputLines contents
