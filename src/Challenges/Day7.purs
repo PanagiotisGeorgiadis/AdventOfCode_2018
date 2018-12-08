@@ -6,8 +6,6 @@ import Prelude
 import Data.Array as Array
 import Data.EuclideanRing (mod)
 import Data.Foldable (sum)
-import Data.Tuple (Tuple(..))
-import Data.Tuple as Tuple
 import Data.Int as Int
 import Data.Map (Map)
 import Data.Map as Map
@@ -19,7 +17,8 @@ import Data.Set as Set
 import Data.String (CodePoint)
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import Debug.Trace as Debug
+import Data.Tuple (Tuple(..))
+import Data.Tuple as Tuple
 import Effect (Effect)
 import Effect.Console as Console
 import Effect.Exception (try)
@@ -132,6 +131,8 @@ stringToAlphabet letter =
 newtype AlphabetObject = AlphabetObject
     { letter :: Alphabet
     , prerequisites :: Array Alphabet
+    , isComplete :: Boolean
+    , duration :: Int
     }
 
 -- derive instance newtypeAlphabetObject :: Newtype AlphabetObject _
@@ -158,92 +159,143 @@ initialAlphabet =
     map (AlphabetObject)
         [ { letter : A
           , prerequisites : []
+          , isComplete : false
+          , duration : 1
           }
         , { letter : B
           , prerequisites : []
+          , isComplete : false
+          , duration : 2
           }
         , { letter : C
           , prerequisites : []
+          , isComplete : false
+          , duration : 3
           }
         , { letter : D
           , prerequisites : []
+          , isComplete : false
+          , duration : 4
           }
         , { letter : E
           , prerequisites : []
+          , isComplete : false
+          , duration : 5
           }
         , { letter : F
           , prerequisites : []
+          , isComplete : false
+          , duration : 6
           }
         , { letter : G
           , prerequisites : []
+          , isComplete : false
+          , duration : 7
           }
         , { letter : H
           , prerequisites : []
+          , isComplete : false
+          , duration : 8
           }
         , { letter : I
           , prerequisites : []
+          , isComplete : false
+          , duration : 9
           }
         , { letter : J
           , prerequisites : []
+          , isComplete : false
+          , duration : 10
           }
         , { letter : K
           , prerequisites : []
+          , isComplete : false
+          , duration : 11
           }
         , { letter : L
           , prerequisites : []
+          , isComplete : false
+          , duration : 12
           }
         , { letter : M
           , prerequisites : []
+          , isComplete : false
+          , duration : 13
           }
         , { letter : N
           , prerequisites : []
+          , isComplete : false
+          , duration : 14
           }
         , { letter : O
           , prerequisites : []
+          , isComplete : false
+          , duration : 15
           }
         , { letter : P
           , prerequisites : []
+          , isComplete : false
+          , duration : 16
           }
         , { letter : Q
           , prerequisites : []
+          , isComplete : false
+          , duration : 17
           }
         , { letter : R
           , prerequisites : []
+          , isComplete : false
+          , duration : 18
           }
         , { letter : S
           , prerequisites : []
+          , isComplete : false
+          , duration : 19
           }
         , { letter : T
           , prerequisites : []
+          , isComplete : false
+          , duration : 20
           }
         , { letter : U
           , prerequisites : []
+          , isComplete : false
+          , duration : 21
           }
         , { letter : V
           , prerequisites : []
+          , isComplete : false
+          , duration : 22
           }
         , { letter : W
           , prerequisites : []
+          , isComplete : false
+          , duration : 23
           }
         , { letter : X
           , prerequisites : []
+          , isComplete : false
+          , duration : 24
           }
         , { letter : Y
           , prerequisites : []
+          , isComplete : false
+          , duration : 25
           }
         , { letter : Z
           , prerequisites : []
+          , isComplete : false
+          , duration : 26
           }
         ]
--- newtype FabricInch = FabricInch { index :: Int, overlaps :: Int }
---
 
---
--- instance eq :: Eq FabricInch
---     where eq (FabricInch a) (FabricInch b) = a.index == b.index
---
--- instance compare :: Ord FabricInch
---     where compare (FabricInch a) (FabricInch b) = compare a.index b.index
+setDuration :: Array AlphabetObject -> Array AlphabetObject
+setDuration =
+    map
+        (\(AlphabetObject obj) ->
+            AlphabetObject (obj { duration = obj.duration + 60 })
+        )
+
 
 parseInstructions :: Array String -> Array AlphabetObject
 parseInstructions =
@@ -274,7 +326,7 @@ parseInstructions =
                 )
                 res
         )
-        (initialAlphabet)
+        initialAlphabet
 
 
 sortPrerequisites :: Array AlphabetObject -> Array AlphabetObject
@@ -308,33 +360,36 @@ solve alphabetObjects = go alphabetObjects ""
                     getFreedObjects objects
 
                 freedLetters =
-                    map (\(AlphabetObject obj) -> obj.letter) freedObjects
+                    Array.take 1
+                        $ map
+                            (\(AlphabetObject obj) ->
+                                obj.letter
+                            )
+                            freedObjects
+
+                updatedObjects_ =
+                    Array.filter
+                        (\(AlphabetObject obj) ->
+                            case Array.head freedLetters of
+                                Just letter ->
+                                    obj.letter /= letter
+
+                                Nothing ->
+                                    false
+                        )
+                        objects
 
                 updatedObjPrerequisites =
                     Array.foldl
                         (\res letter ->
                             removeLetterFromPrereqs letter res
                         )
-                        objects
+                        updatedObjects_
                         freedLetters
 
-                updatedObjects =
-                    Array.filter
-                        (\(AlphabetObject obj) ->
-                            Array.foldl
-                                (\res item ->
-                                    if res then
-                                        res
-                                    else
-                                        not $ obj.letter == item
-                                )
-                                false
-                                freedLetters
-                        )
-                        updatedObjPrerequisites
-
                 lettersToAdd =
-                    map show $ Array.sort freedLetters
+                    map show
+                        $ Array.sort freedLetters
 
                 updatedResult =
                     Array.foldl
@@ -346,86 +401,14 @@ solve alphabetObjects = go alphabetObjects ""
                         )
                         res
                         lettersToAdd
-
-                -- updatedObjects =
-                --     Array.filter
-                --         (\(AlphabetObject obj) ->
-                --             not $ Array.null obj.prerequisites
-                --         )
-                --         updatedObjPrerequisites
-
-                _ = Debug.trace updatedObjects (\_ -> "")
-                -- _ = Debug.trace updatedObjPrerequisites (\_ -> "")
-                -- updatedObjectsAndResult =
-                --     Array.foldl
-                --         (\res letter ->
-                --             let
-                --                 -- _ = Debug.trace letter (\_ -> "")
-                --                 updatedObjs =
-                --                     -- Array.filter (\(AlphabetObject obj) -> not $ Array.null obj.prerequisites )
-                --                     removeLetterFromPrereqs letter (Tuple.fst res)
-                --
-                --                 -- _ = Debug.trace updatedObjs (\_ -> "")
-                --
-                --                 lettersToAdd =
-                --                     map show $ Array.sort freedLetters
-                --
-                --                 updatedRes =
-                --                     Array.foldl
-                --                         (\r letter ->
-                --                             if String.contains (String.Pattern letter) r then
-                --                                 r
-                --                             else
-                --                                 r <> letter
-                --                         )
-                --                         (Tuple.snd res)
-                --                         lettersToAdd
-                --             in
-                --             Tuple updatedObjs updatedRes
-                --         )
-                --         (Tuple objects res)
-                --         freedLetters
-                --
-                -- -- _ = Debug.trace (Tuple.fst updatedObjectsAndResult) (\_ -> "")
-                --
-                -- updatedResult =
-                --     Tuple.snd updatedObjectsAndResult
-                --
-                -- updatedObjects =
-                --     Array.filter (\(AlphabetObject obj) -> not $ Array.null obj.prerequisites)
-                --         $ Tuple.fst updatedObjectsAndResult
-                --
-                --
-                -- _ = Debug.trace updatedResult (\_ -> "")
-                -- _ = Debug.trace updatedObjects (\_ -> "")
-                -- lettersToAdd =
-                --     map show $ Array.sort freedLetters
-
-                -- updatedRes =
-                --     Array.foldl
-                --         (\r letter ->
-                --             if String.contains (String.Pattern letter) r then
-                --                 r
-                --             else
-                --                 r <> letter
-                --         )
-                --         res
-                --         lettersToAdd
-
-                -- areAllLettersFreed =
-                --     Array.all identity
-                --         $ map Array.null
-                --         $ map (\(AlphabetObject obj) -> obj.prerequisites) objects
             in
-            -- if Array.null objects then
-            --     res
-            -- else
-            --     go updatedObjects updatedResult
-            ""
+            if Array.null objects then
+                res
+            else
+                go updatedObjPrerequisites updatedResult
 
 
--- JKXDEPTFABUHOQSVYZMLNCIGRW -- Wrong
--- JKXDEPTFABUHOQSVYZMLNCIGRW
+-- JDEKPFABTUHOQSXVYMLZCNIGRW
 firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day7.txt")
@@ -438,10 +421,73 @@ firstChallenge = do
         $ getInputLines contents
 
 
+decrementDuration :: AlphabetObject -> AlphabetObject
+decrementDuration (AlphabetObject obj) =
+    AlphabetObject (obj { duration = obj.duration - 1 })
+
+getLetter :: AlphabetObject -> Alphabet
+getLetter (AlphabetObject obj) =
+    obj.letter
+
+solve_ :: Array AlphabetObject -> Int
+solve_ = go 0 []
+    where go duration workers objects =
+            let
+                freedObjects =
+                    getFreedObjects objects
+
+                activeWorkers =
+                    Array.foldl
+                        (\res freed ->
+                            let
+                                isAlreadyActive =
+                                    Array.any identity
+                                        $ map (\r -> getLetter r == getLetter freed) res
+                            in
+                            if Array.length res < 5 && not isAlreadyActive then
+                                Array.snoc res freed
+                            else
+                                res
+                        )
+                        workers
+                        freedObjects
+
+                updatedWorkers_ =
+                    map decrementDuration activeWorkers
+
+                updatedDuration =
+                    duration + 1
+
+                updatedObjects =
+                    Array.foldl
+                        (\res (AlphabetObject worker) ->
+                            if worker.duration == 0 then
+                                Array.filter (\(AlphabetObject worker_) -> worker_.letter /= worker.letter)
+                                    $ removeLetterFromPrereqs worker.letter res
+                            else
+                                res
+                        )
+                        objects
+                        updatedWorkers_
+
+                updatedWorkers =
+                    Array.filter (\(AlphabetObject worker) -> worker.duration > 0) updatedWorkers_
+            in
+            if Array.null objects then
+                duration
+            else
+                go updatedDuration updatedWorkers updatedObjects
+
+
+-- 1048 ???
 secondChallenge :: Effect Unit
 secondChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day7.txt")
     Console.log
         $ show
+        $ solve_
+        $ setDuration
+        $ sortPrerequisites
+        $ parseInstructions
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
