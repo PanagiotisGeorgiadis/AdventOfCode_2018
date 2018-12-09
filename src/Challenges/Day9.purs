@@ -102,94 +102,6 @@ solve_ players = go [0] 1 0 1 players
                 else
                     go board_ marbleIndex_ marbleIndex playerIndex_ players_ remainingMarbles_
 
-type Result =
-    { board :: Marbles
-    , marbleIndex :: Int
-    , previousIndex :: Int
-    , playerIndex :: Int
-    , players :: Players
-    }
-
-solve :: Players -> Marbles -> Int
-solve ps marbles =
-    let
-        thing =
-            Array.foldl
-                (\{ board, marbleIndex, previousIndex, playerIndex, players } targetMarble ->
-                    let
-                        playerIndex_ =
-                            incrementPlayerIndex playerIndex players
-                    in
-                    if targetMarble > 0 && mod targetMarble 23 == 0 then
-                        let
-                            magicNumber =
-                                7
-
-                            removeIndex =
-                                if previousIndex - magicNumber < 0 then
-                                    Array.length board - (abs (previousIndex - magicNumber))
-                                else
-                                    previousIndex - magicNumber
-
-                            extraMarble =
-                                Maybe.fromMaybe 0
-                                    $ Array.head
-                                    $ Array.drop removeIndex board
-
-                            updatedPlayers =
-                                Map.update
-                                    (\v ->
-                                        Just (v + targetMarble + extraMarble)
-                                    )
-                                    playerIndex
-                                    players
-
-                            board_ =
-                                Array.take removeIndex board
-                                    <> Array.drop (removeIndex + 1) board
-
-                            marbleIndex_ =
-                                if removeIndex + 2 > Array.length board_ then
-                                    1
-                                else
-                                    removeIndex + 2
-                        in
-                        { board : board_
-                        , marbleIndex : marbleIndex_
-                        , previousIndex : removeIndex
-                        , playerIndex : playerIndex_
-                        , players : updatedPlayers
-                        }
-                    else
-                        let
-                            marbleIndex_ =
-                                if marbleIndex < Array.length board then
-                                    marbleIndex + 2
-                                else
-                                    1
-
-                            board_ =
-                                Array.take marbleIndex board
-                                    <> Array.singleton targetMarble
-                                    <> Array.drop marbleIndex board
-                        in
-                        { board : board_
-                        , marbleIndex : marbleIndex_
-                        , previousIndex : marbleIndex
-                        , playerIndex : playerIndex_
-                        , players : players
-                        }
-                )
-                ({ board : [0]
-                , marbleIndex : 1
-                , previousIndex : 0
-                , playerIndex : 1
-                , players : ps
-                })
-                marbles
-    in
-    getWinnerScore thing.players
-
 
 -- 421237 ??? -- Too low
 -- 420721
@@ -208,7 +120,8 @@ firstChallenge =
     in
     solve_ players marbles
 
--- 1561260
+-- TODO: Migrate Data.Sequence to the new version of PureScript and try it again.
+-- 3526561003 > 5 hours execution ?? >_<
 secondChallenge :: Int
 secondChallenge =
     let
