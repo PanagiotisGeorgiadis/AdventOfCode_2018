@@ -3,26 +3,13 @@ module Challenges.Day9 where
 
 import Prelude
 
-import Data.Array (mapWithIndex)
 import Data.Array as Array
-import Data.Foldable (sum)
-import Data.Int as Int
-import Data.Map (Map(..))
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
-import Data.Ord (abs, max)
-import Data.String as String
+import Data.Ord (abs)
 import Data.Tuple (Tuple(..))
-import Data.Tuple as Tuple
-import Debug.Trace as Debug
-import Effect (Effect)
-import Effect.Console as Console
-import Effect.Exception (try)
-import Node.Encoding (Encoding(..))
-import Node.FS.Sync (readTextFile)
-import Utils.Helpers (getInputLines)
-import Utils.String as StringUtils
 
 type Marbles = Array Int
 type Players = Map Int Int
@@ -75,8 +62,6 @@ solve_ players = go [0] 1 0 1 players
                             $ Array.head
                             $ Array.drop removeIndex board
 
-                    -- _ = Debug.trace extraMarble (\_ -> "")
-
                     updatedPlayers =
                         Map.update
                             (\v ->
@@ -90,22 +75,10 @@ solve_ players = go [0] 1 0 1 players
                             <> Array.drop (removeIndex + 1) board
 
                     marbleIndex_ =
-                        -- removeIndex + 2
-                        -- removeIndex + 1
                         if removeIndex + 2 > Array.length board_ then
                             1
                         else
                             removeIndex + 2
-
-
-                    -- _ = Debug.trace (removeIndex) (\_ -> "")
-                    -- _ = Debug.trace (marbleIndex_) (\_ -> "")
-                    -- _ = Debug.trace (show board) (\_ -> "")
-                    -- _ = Debug.trace (show board_) (\_ -> "")
-                    -- _ = Debug.trace ("") (\_ -> "")
-
-                    -- _ = Debug.trace targetMarble (\_ -> "")
-                    -- _ = Debug.trace (show board) (\_ -> "")
                 in
                 if Array.null remainingMarbles then
                     getWinnerScore players_
@@ -123,13 +96,6 @@ solve_ players = go [0] 1 0 1 players
                         Array.take marbleIndex board
                             <> Array.singleton targetMarble
                             <> Array.drop marbleIndex board
-
-                    -- _ = Debug.trace targetMarble (\_ -> "")
-                    -- _ = Debug.trace (show board) (\_ -> "")
-                    -- _ = if targetMarble == 47 || targetMarble == 48 then
-                    --         Debug.trace (show board_) (\_ -> "")
-                    --     else
-                    --         ""
                 in
                 if Array.null remainingMarbles then
                     getWinnerScore players_
@@ -140,57 +106,29 @@ solve_ players = go [0] 1 0 1 players
 -- 420721
 -- 434729 ??? -- Too high
 -- 425688
-firstChallenge :: Int -> Int -> Int
-firstChallenge playersMax marblesMax =
+firstChallenge :: Int
+firstChallenge =
     let
         players =
             Map.fromFoldable
                 $ map (\index -> Tuple index 0)
-                -- $ Array.range 1 411
-                -- $ Array.range 1 9
-                -- $ Array.range 1 10
-                -- $ Array.range 1 13
-                -- $ Array.range 1 17
-                -- $ Array.range 1 21
-                -- $ Array.range 1 30
-                $ Array.range 1 playersMax
+                $ Array.range 1 411
 
         marbles =
-            -- Array.range 1 71170
-            -- Array.range 1 25
-            -- Array.range 1 1618
-            -- Array.range 1 7999
-            -- Array.range 1 1104
-            -- Array.range 1 6111
-            -- Array.range 1 5807
-            Array.range 1 marblesMax
+            Array.range 1 71170
     in
     solve_ players marbles
 
 -- 1561260
-secondChallenge :: Int -> Int -> Int
-secondChallenge playersMax marblesMax =
+secondChallenge :: Int
+secondChallenge =
     let
         players =
             Map.fromFoldable
                 $ map (\index -> Tuple index 0)
-                -- $ Array.range 1 411
-                -- $ Array.range 1 9
-                -- $ Array.range 1 10
-                -- $ Array.range 1 13
-                -- $ Array.range 1 17
-                -- $ Array.range 1 21
-                -- $ Array.range 1 30
-                $ Array.range 1 playersMax
+                $ Array.range 1 411
 
         marbles =
-            -- Array.range 1 71170
-            -- Array.range 1 25
-            -- Array.range 1 1618
-            -- Array.range 1 7999
-            -- Array.range 1 1104
-            -- Array.range 1 6111
-            -- Array.range 1 5807
-            Array.range 1 marblesMax
+            Array.range 1 (71170 * 100)
     in
     solve_ players marbles
