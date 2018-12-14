@@ -379,21 +379,6 @@ type CustomSquareGrid =
 getCustomSquareGrid :: Coords -> Map Coords Int -> CustomSquareGrid
 getCustomSquareGrid (Tuple x y) grid =
     let
-        -- xs =
-        --     Array.range x (x + 2)
-        --
-        -- ys =
-        --     Array.range y (y + 2)
-
-        -- keys =
-        --     Array.concat
-        --         $ map
-        --             (\x ->
-        --                 map (\y -> Tuple x y) ys
-        --             )
-        --             xs
-
-        -- _ = getSquareKeys (Tuple x y)
         squares =
             getSquareKeys (Tuple x y)
 
@@ -403,18 +388,7 @@ getCustomSquareGrid (Tuple x y) grid =
                     getSquareScore square grid
                 )
                 squares
-        -- values =
-        --     map (\key -> Map.lookup key grid) keys
-        -- score =
-        --     if Array.any ((==) Nothing) values then
-        --         0
-        --     else
-        --         Array.foldl
-        --             (\res val ->
-        --                 res + Maybe.fromMaybe 0 val
-        --             )
-        --             0
-        --             values
+
         biggestScore =
             Array.foldl
                 (\res val ->

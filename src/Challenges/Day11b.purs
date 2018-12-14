@@ -70,7 +70,9 @@ import Utils.String as StringUtils
 
 --
 gridSerialNumber :: Int
-gridSerialNumber = 5535
+-- gridSerialNumber = 5535
+gridSerialNumber = 18
+-- gridSerialNumber = 42
 
 type Coords = Tuple Int Int
 
@@ -101,22 +103,22 @@ constructPowerMap =
                 in
                 Tuple (Tuple x y) value
             )
---
--- initialGrid :: Map Coords Int
--- initialGrid =
---     let
---         range =
---             Array.range 1 300
---
---         coords =
---             Array.concat
---                 $ map
---                     (\x ->
---                         map (\y -> Tuple x y) range
---                     )
---                     range
---     in
---     constructPowerMap coords
+
+initialGrid :: Map Coords Int
+initialGrid =
+    let
+        range =
+            Array.range 1 300
+
+        coords =
+            Array.concat
+                $ map
+                    (\x ->
+                        map (\y -> Tuple x y) range
+                    )
+                    range
+    in
+    constructPowerMap coords
 
 
 -- type SquareGrid =
@@ -433,90 +435,101 @@ type CustomSquareGrid =
 --         )
 --         (List.range 1 maxSize)
 
-getBiggestSquareValue :: Coords -> Map Coords Int -> CustomSquareGrid
-getBiggestSquareValue (Tuple x y) grid =
-    let
-        maxSize =
-            min ( 300 - x ) ( 300 - y )
-    in
-    go maxSize { topLeftCoord : Tuple 0 0, size: 0, score: 0 }
-        where go size biggestScore =
-                let
-                    xs = List.range x (x + size)
-                    ys = List.range y (y + size)
+-- getBiggestSquareValue :: Coords -> Map Coords Int -> CustomSquareGrid
+-- getBiggestSquareValue (Tuple x y) grid =
+--     let
+--         maxSize =
+--             min ( 300 - x ) ( 300 - y )
+--     in
+--     go maxSize { topLeftCoord : Tuple 0 0, size: 0, score: 0 }
+--         where go size biggestScore =
+--                 let
+--                     xs = List.range x (x + size)
+--                     ys = List.range y (y + size)
+--
+--                     keys =
+--                         List.concatMap (\x -> map (Tuple x) ys) xs
+--
+--                     score =
+--                         List.foldl
+--                             (\sum key ->
+--                                 sum + ( Maybe.fromMaybe 0 $ Map.lookup key grid )
+--                             )
+--                             0
+--                             keys
+--                 in
+--                 if size == 0 then
+--                     biggestScore
+--                 else if score > biggestScore.score then
+--                     go (size - 1)
+--                         { topLeftCoord : Tuple x y
+--                         , size : size
+--                         , score : score
+--                         }
+--                 else
+--                     go (size - 1) biggestScore
 
-                    keys =
-                        List.concatMap (\x -> map (Tuple x) ys) xs
 
-                    score =
-                        List.foldl
-                            (\sum key ->
-                                sum + ( Maybe.fromMaybe 0 $ Map.lookup key grid )
-                            )
-                            0
-                            keys
-                in
-                if size == 0 then
-                    biggestScore
-                else if score > biggestScore.score then
-                    go (size - 1)
-                        { topLeftCoord : Tuple x y
-                        , size : size
-                        , score : score
-                        }
-                else
-                    go (size - 1) biggestScore
+
+getSum :: Array Coords -> Map Coords Int -> Int
+getSum coords grid =
+    Array.foldl
+        (\sum key ->
+            sum + (Maybe.fromMaybe 0 $ Map.lookup key grid)
+        )
+        0
+        coords
+
+
+getCoordsToSubtract :: Coords -> Array Coords
+getCoordsToSubtract (Tuple x y) =
+    Array.filter
+        (\coord ->
+            Tuple.fst coord > 0 && Tuple.snd coord > 0
+        )
+    $ map
+        (\n -> Tuple (x - n) (y - n))
+        (Array.range 1 (max x y))
+
+
+getPreviousCoords :: Coords -> Array Coords -> Array Coords
+getPreviousCoords (Tuple x y) excludingCoords =
+    Array.filter
+        (\coord ->
+            if Array.null excludingCoords then
+                true
+            else
+                List.any ((/=) coord) excludingCoords
+        )
+    $ Array.filter ((/=) (Tuple x y))
+    $ Array.concat
+    $ map
+        (\x_ ->
+            map (Tuple x_) (Array.range 1 y)
+        )
+        (Array.range 1 x)
 
 
 createSummedAreaTable :: Map Coords Int -> Map Coords Int
 createSummedAreaTable grid =
     mapWithIndex
-        (\(Tuple x y) val ->
+        (\coords val ->
             let
-                previousXs =
-                    Array.range 1 x
-
-                previousYs =
-                    Array.range 1 y
+                coordsToSubtract =
+                    getCoordsToSubtract coords
 
                 coordsToAdd =
-                    map (\x -> Tuple x y) previousXs
-                        <> map (\y -> Tuple x y) previousYs
-
-                -- _ = Debug.trace (show x <> ", " <> show y) (\_ -> "")
-                -- _ = Debug.trace val (\_ -> "")
-                -- _ = Debug.trace y (\_ -> "")
-
-                coordsToSubtract =
-                    Array.concat
-                        $ map (\x -> map (Tuple x) previousYs) previousXs
+                    -- getPreviousCoords (Tuple x y) coordsToSubtract
+                    getPreviousCoords coords []
 
                 addValues =
-                    Array.foldl
-                        (\sum key ->
-                            sum + (Maybe.fromMaybe 0 $ Map.lookup key grid)
-                        )
-                        0
-                        coordsToAdd
+                    getSum coordsToAdd grid
 
                 subtractValues =
-                    Array.foldl
-                        (\sum key ->
-                            sum + (Maybe.fromMaybe 0 $ Map.lookup key grid)
-                        )
-                        0
-                        coordsToSubtract
-
-                _ =
-                    if x == 1 && y == 1 then
-                        Debug.trace previousXs (\_ -> "")
-                    else
-                        ""
-                -- _ = Debug.trace addValues (\_ -> "")
-                -- _ = Debug.trace subtractValues (\_ -> "")
+                    getSum coordsToSubtract grid
             in
-            val + addValues - subtractValues
-            -- 0
+            val + addValues
+            -- val + addValues - subtractValues
         )
         grid
 
@@ -562,21 +575,95 @@ initialGrid_ =
         , Tuple (Tuple 6 6) 6
         ]
 
+{-
+    3 2  -> x           y
+    3 5  -> x          (y + size)
+    6 2  -> (x + size) y
+    6 5  -> (x + size) (y + size)
+-}
+getCustomSquareGridKeys :: Coords -> Int -> Array Coords
+getCustomSquareGridKeys (Tuple x y) size =
+    [ Tuple x          y
+    , Tuple x          (y + size)
+    , Tuple (x + size) y
+    , Tuple (x + size) (y + size)
+    ]
+
+
+getCustomSquareGrid :: Coords -> Map Coords Int -> CustomSquareGrid
+getCustomSquareGrid (Tuple x y) grid =
+    let
+        maxSize =
+            min (300 - x) (300 - y)
+
+        keys =
+            map (getCustomSquareGridKeys (Tuple x y)) (Array.range 1 maxSize)
+
+        biggestGrid =
+            Array.foldl
+                (\res keySet ->
+                    case keySet of
+                        [ a, b, c, d ] ->
+                            let
+                                getMapValue k =
+                                    Maybe.fromMaybe 0
+                                        $ Map.lookup k grid
+
+                                squareScore =
+                                    getMapValue d
+                                        + getMapValue a
+                                        - getMapValue b
+                                        - getMapValue c
+                            in
+                            if squareScore > res.score then
+                                { score : squareScore
+                                , size : Tuple.fst d - Tuple.fst a
+                                }
+                            else
+                                res
+                        _ ->
+                            ({ score : 0, size : 0 })
+                )
+                ({ score : 0, size : 0 })
+                keys
+    in
+    { topLeftCoord : Tuple x y
+    , score : biggestGrid.score
+    , size : biggestGrid.size
+    }
+
 secondChallenge :: Effect Unit
 secondChallenge =
     let
         -- powerGrid =
         --     initialGrid
         summedTable =
-            -- createSummedAreaTable initialGrid
-            createSummedAreaTable initialGrid_
+            -- createSummedAreaTable initialGrid_
+            createSummedAreaTable initialGrid
+
+        biggestGrid =
+            Array.foldl
+                (\res key ->
+                    let
+                        square =
+                            getCustomSquareGrid key summedTable
+                    in
+                    if square.score > res.score then
+                        square
+                    else
+                        res
+                )
+                { topLeftCoord : Tuple 0 0
+                , score : 0
+                , size : 0
+                }
+                (Map.keys summedTable)
+
+        -- _ = Debug.trace customGrids (\_ -> "")
 
         str =
             Array.foldl
                 (\res value ->
-                    -- if Tuple.snd coords == 6 then
-                        -- res <> " " <> show value <> "\n"
-                    -- else
                     if mod (Array.length $ String.split (String.Pattern " ") res) 6 == 0 then
                         res <> " " <> show value <> "\n"
                     else
@@ -585,11 +672,8 @@ secondChallenge =
                 ""
                 (Map.values summedTable)
     in
-    -- { topLeftCoord : Tuple 0 0
-    -- , score : 0
-    -- , size : 0
-    -- }
-    Console.log str
+    Console.log $ show biggestGrid
+    -- Console.log str
 {-
 secondChallenge :: CustomSquareGrid
 secondChallenge =

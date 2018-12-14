@@ -50,7 +50,7 @@ newtype Point = Point
     }
 
 instance showPoint :: Show Point
-    where show (Point obj) = show obj.position
+    where show (Point obj) = show obj
 
 instance pointEq :: Eq Point
     where eq (Point lhs) (Point rhs) = lhs.position == rhs.position
@@ -445,9 +445,10 @@ firstChallenge :: Effect Unit
 firstChallenge = do
     contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10e.txt")
     Console.log
+        $ show
         -- $ (\_ -> show "")
         -- $ show
-        $ drawPositions
+        -- $ drawPositions
         $ map parsePoint
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
