@@ -15,7 +15,6 @@ import qualified Data.Text     as Text
 import Data.Foldable (foldl', toList)
 import Data.Sequence (Seq)
 import Data.Maybe    (Maybe(..))
-import Text.Read     (readMaybe)
 import Data.Char     (digitToInt)
 
 
@@ -55,15 +54,7 @@ puzzleInput :: String
 puzzleInput = "077201"
 -- puzzleInput = "59414"
 
-{-
-getRecipeScore :: Maybe ScoreBoardItem -> Int
-getRecipeScore Nothing                      = 0
-getRecipeScore (Just (ScoreBoardItem item)) =
-    case item.occupant of
-        Occupied (First recipeScore)  -> recipeScore
-        Occupied (Second recipeScore) -> recipeScore
-        Empty recipeScore             -> recipeScore
--}
+
 getRecipeScore :: ScoreBoardItem -> Int
 getRecipeScore (ScoreBoardItem index occupant) =
     case occupant of
@@ -179,11 +170,10 @@ getNewIndex index moveTimes scoreBoardLength =
 moveElves :: ScoreBoard -> ScoreBoard
 moveElves scoreBoard =
     let
-        magicNumber = 1
-        firstElf  = getFirstElfData scoreBoard
-        secondElf = getSecondElfData scoreBoard
-        scoreBoardLength = Seq.length scoreBoard
-
+        magicNumber       = 1
+        firstElf          = getFirstElfData scoreBoard
+        secondElf         = getSecondElfData scoreBoard
+        scoreBoardLength  = Seq.length scoreBoard
         updatedScoreBoard =
             case (firstElf, secondElf) of
                 (Just (ElfData index score), Just (ElfData index_ score_ )) ->
@@ -273,7 +263,7 @@ drawScoreBoardWhile scoreBoard =
     let
         scoreBoardStr = printBoard scoreBoard
     in
-    if List.isInfixOf puzzleInput scoreBoardStr then
+    if List.isSuffixOf puzzleInput scoreBoardStr then
         length scoreBoardStr - length puzzleInput
     else
         drawScoreBoardWhile (moveElves $ createNewRecipes scoreBoard)
@@ -281,5 +271,5 @@ drawScoreBoardWhile scoreBoard =
 
 secondChallenge :: String
 secondChallenge =
-    show $ drawScoreBoardWhile initialScoreBoard
-    -- show $ drop 2018 $ drawScoreBoardForN (2018 + 5) initialScoreBoard
+    -- show $ drawScoreBoardWhile initialScoreBoard
+    show $ drop 2018 $ drawScoreBoardForN (2018 + 5) initialScoreBoard
