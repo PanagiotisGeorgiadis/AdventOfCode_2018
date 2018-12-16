@@ -6,6 +6,10 @@ import Data.Array as Array
 import Data.Foldable (sum)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.Int as Int
+import Data.List.Lazy.Types (List)
+import Data.List.Lazy as List
+-- import Data.List as List
+-- import Data.List (List)
 import Data.Map (Map(..), values)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -59,7 +63,7 @@ newtype ScoreBoardItem = ScoreBoardItem { index :: Int, occupant :: Occupant }
 instance showScoreBoardItem :: Show ScoreBoardItem
     where show (ScoreBoardItem item) = "( ScoreBoardItem " <> show item <> ")"
 
-type ScoreBoard = Array ScoreBoardItem
+type ScoreBoard = List ScoreBoardItem
 
 
 puzzleInput :: String
@@ -77,9 +81,10 @@ getRecipeScore (Just (ScoreBoardItem item)) =
 
 initialScoreBoard :: ScoreBoard
 initialScoreBoard =
-    [ ScoreBoardItem { index : 0, occupant : Occupied (First { recipeScore : 3 }) }
-    , ScoreBoardItem { index : 1, occupant : Occupied (Second { recipeScore : 7 }) }
-    ]
+    List.fromFoldable
+        [ ScoreBoardItem { index : 0, occupant : Occupied (First { recipeScore : 3 }) }
+        , ScoreBoardItem { index : 1, occupant : Occupied (Second { recipeScore : 7 }) }
+        ]
     -- [ ScoreBoardItem { index : 0, occupant : Occupied (First { recipeScore : 0 }) }
     -- , ScoreBoardItem { index : 1, occupant : Occupied (Second { recipeScore : 7 }) }
     -- , ScoreBoardItem { index : 2, occupant : Empty 7 }
@@ -95,33 +100,37 @@ createNewRecipes scoreBoard =
     let
         elfScores =
             sum
-            $ Array.foldl
+            $ List.foldl
                 (\res (ScoreBoardItem item) ->
                     case item.occupant of
                         Occupied (First { recipeScore }) ->
-                            Array.snoc res recipeScore
+                            List.snoc res recipeScore
 
                         Occupied (Second { recipeScore }) ->
-                            Array.snoc res recipeScore
+                            List.snoc res recipeScore
 
                         Empty _ ->
                             res
                 )
-                []
+                (List.fromFoldable [])
                 scoreBoard
 
         scores_ =
             if elfScores > 9 then
-                map (Maybe.fromMaybe 0 <<< Int.fromString)
+                List.fromFoldable
+                    $ map (Maybe.fromMaybe 0 <<< Int.fromString)
                     $ String.split (String.Pattern "")
                     $ show elfScores
             else
-                Array.singleton elfScores
+                List.singleton elfScores
 
         newItems =
             mapWithIndex
                 (\index score ->
-                    ScoreBoardItem { index : Array.length scoreBoard + index, occupant : Empty score }
+                    ScoreBoardItem
+                        { index : List.length scoreBoard + index
+                        , occupant : Empty score
+                        }
                 )
                 scores_
     in
@@ -130,8 +139,8 @@ createNewRecipes scoreBoard =
 
 getFirstElfData :: ScoreBoard -> Maybe ElfData
 getFirstElfData =
-    Array.head <<<
-        Array.mapMaybe
+    List.head <<<
+        List.mapMaybe
             (\(ScoreBoardItem item) ->
                 case item.occupant of
                     Occupied (First { recipeScore }) ->
@@ -143,8 +152,8 @@ getFirstElfData =
 
 getSecondElfData :: ScoreBoard -> Maybe ElfData
 getSecondElfData =
-    Array.head <<<
-        Array.mapMaybe
+    List.head <<<
+        List.mapMaybe
             (\(ScoreBoardItem item) ->
                 case item.occupant of
                     Occupied (Second { recipeScore }) ->
@@ -155,16 +164,15 @@ getSecondElfData =
             )
 
 
-getNewIndex :: Int -> Int -> ScoreBoard -> Int
-getNewIndex index moveTimes scoreBoard =
+getNewIndex :: Int -> Int -> Int -> Int
+getNewIndex index moveTimes scoreBoardLength =
     if moveTimes == 0 then
         index
     else
         let
-            scoreBoardLength = Array.length scoreBoard
             updatedMoveTimes = moveTimes - 1
             updatedIndex     = index + 1
-            go               = \i -> getNewIndex i updatedMoveTimes scoreBoard
+            go               = \i -> getNewIndex i updatedMoveTimes scoreBoardLength
         in
         if updatedIndex > scoreBoardLength - 1 then
             go 0
@@ -178,32 +186,32 @@ moveElves scoreBoard =
         magicNumber = 1
         firstElf  = getFirstElfData scoreBoard
         secondElf = getSecondElfData scoreBoard
-        scoreBoardLength = Array.length scoreBoard
+        scoreBoardLength = List.length scoreBoard
 
         updatedScoreBoard =
             case firstElf, secondElf of
                 Just first, Just second ->
                     let
                         newFirstIndex =
-                            getNewIndex first.currentIndex (magicNumber + first.recipeScore) scoreBoard
+                            getNewIndex first.currentIndex (magicNumber + first.recipeScore) scoreBoardLength
 
                         newSecondIndex =
-                            getNewIndex second.currentIndex (magicNumber + second.recipeScore) scoreBoard
+                            getNewIndex second.currentIndex (magicNumber + second.recipeScore) scoreBoardLength
 
                         newFirstScore =
-                            getRecipeScore $ Array.index scoreBoard newFirstIndex
+                            getRecipeScore $ List.index scoreBoard newFirstIndex
 
                         newSecondScore =
-                            getRecipeScore $ Array.index scoreBoard newSecondIndex
+                            getRecipeScore $ List.index scoreBoard newSecondIndex
                     in
-                     Maybe.fromMaybe scoreBoard
-                        $ Array.updateAt newSecondIndex (ScoreBoardItem { index : newSecondIndex, occupant : Occupied (Second { recipeScore : newSecondScore })})
-                        $ Maybe.fromMaybe scoreBoard
-                        $ Array.updateAt newFirstIndex (ScoreBoardItem { index : newFirstIndex, occupant : Occupied (First { recipeScore : newFirstScore })})
-                        $ Maybe.fromMaybe scoreBoard
-                        $ Array.updateAt second.currentIndex (ScoreBoardItem { index : second.currentIndex, occupant : Empty second.recipeScore })
-                        $ Maybe.fromMaybe scoreBoard
-                        $ Array.updateAt first.currentIndex (ScoreBoardItem { index : first.currentIndex, occupant : Empty first.recipeScore }) scoreBoard
+                     -- Maybe.fromMaybe scoreBoard
+                        List.updateAt newSecondIndex (ScoreBoardItem { index : newSecondIndex, occupant : Occupied (Second { recipeScore : newSecondScore })})
+                        -- $ Maybe.fromMaybe scoreBoard
+                        $ List.updateAt newFirstIndex (ScoreBoardItem { index : newFirstIndex, occupant : Occupied (First { recipeScore : newFirstScore })})
+                        -- $ Maybe.fromMaybe scoreBoard
+                        $ List.updateAt second.currentIndex (ScoreBoardItem { index : second.currentIndex, occupant : Empty second.recipeScore })
+                        -- $ Maybe.fromMaybe scoreBoard
+                        $ List.updateAt first.currentIndex (ScoreBoardItem { index : first.currentIndex, occupant : Empty first.recipeScore }) scoreBoard
 
                 _, _ ->
                     scoreBoard
@@ -211,18 +219,20 @@ moveElves scoreBoard =
     updatedScoreBoard
 
 printBoard :: ScoreBoard -> String
-printBoard =
-    String.joinWith "" <<<
-        map (\(ScoreBoardItem item) ->
+printBoard s =
+    String.joinWith ""
+        $ map (\(ScoreBoardItem item) ->
                 case item.occupant of
                     Occupied (First { recipeScore })  -> show recipeScore
                     Occupied (Second { recipeScore }) -> show recipeScore
                     Empty score                       -> show score
             )
+        $ Array.fromFoldable s
+
 
 drawScoreBoardForN :: Int -> ScoreBoard -> String
 drawScoreBoardForN n scoreBoard =
-    if Array.length scoreBoard > n then
+    if List.length scoreBoard > n then
         printBoard scoreBoard
     else
         drawScoreBoardForN n (moveElves $ createNewRecipes scoreBoard)

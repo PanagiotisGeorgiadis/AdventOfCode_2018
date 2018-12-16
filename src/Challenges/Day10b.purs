@@ -272,7 +272,7 @@ initialGrid ps =
             map
                 (\(Point { position, velocity }) ->
                     Point
-                        { position : Tuple (Tuple.fst position / 10) (Tuple.snd position / 10)
+                        { position : Tuple (Tuple.fst position) (Tuple.snd position)
                         , velocity : velocity
                         }
                 )
@@ -446,7 +446,6 @@ performTick grid =
         $ emptyCells sourceCoords grid
 
 
-
 drawPositions :: Array Point -> String
 drawPositions points =
     let
@@ -456,14 +455,13 @@ drawPositions points =
         initialGrid_ =
             initialGrid points
     in
-    drawGrid rowSize_ (performTick $ performTick $ performTick $ performTick initialGrid_)
+    drawGrid rowSize_ ( performTick $ performTick $ performTick initialGrid_)
 
 solve :: Map Coords Cell -> String
 solve grid =
     let
         points =
-            map
-                (\c -> Point { position : c, velocity : Tuple 0 0 })
+            map (\c -> Point { position : c, velocity : Tuple 0 0 })
                 $ getPointCoords grid
 
         xDiff = (getMaxX points) - (getMinX points) + 1
@@ -490,15 +488,15 @@ solve grid =
 
 firstChallenge :: Effect Unit
 firstChallenge = do
-    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10.txt")
+    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10e.txt")
     Console.log
         -- $ show
         -- $ (\_ -> show "")
         -- $ show
         -- $ drawPositions
-        -- $ solve
+        $ solve
         -- $ drawGrid 120
-        $ (\_ -> "")
+        -- $ (\_ -> "")
         $ initialGrid
         $ map parsePoint
         $ map (StringUtils.removeAll "\r")

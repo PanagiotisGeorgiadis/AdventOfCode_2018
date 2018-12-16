@@ -17,7 +17,6 @@ import Data.Set as Set
 import Data.String (CodePoint)
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import Data.Tuple (Tuple(..))
 import Data.Tuple as Tuple
 import Effect (Effect)
 import Effect.Console as Console
