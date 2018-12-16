@@ -60,6 +60,19 @@ instance pointOrd :: Ord Point
     where compare (Point lhs) (Point rhs) = compare lhs.position rhs.position
 
 
+data Cell = PointCell (Array Coords) | EmptyCell
+
+instance showCell :: Show Cell
+    where show (PointCell _) = "#"
+          show EmptyCell     = "."
+
+instance cellEq :: Eq Cell
+    where eq (PointCell lhs) (PointCell rhs) = lhs == rhs
+          eq (PointCell lhs) EmptyCell       = false
+          eq EmptyCell       (PointCell rhs) = false
+          eq EmptyCell       EmptyCell       = true
+
+
 parsePoint :: String -> Point
 parsePoint line =
     let
@@ -88,8 +101,8 @@ parsePoint line =
             Maybe.fromMaybe 0 <<< Array.head
     in
     Point
-        { position : Tuple (getInt positions) (getInt $ Array.reverse positions)
-        , velocity : Tuple (getInt velocities) (getInt $ Array.reverse velocities)
+        { position : Tuple (getInt $ Array.reverse positions) (getInt positions)
+        , velocity : Tuple (getInt $ Array.reverse velocities) (getInt velocities)
         }
 
 
@@ -247,14 +260,24 @@ getMaxY =
 getRowSize :: Array Point -> Int
 getRowSize points =
     let
-        minX = getMinX points
-        maxX = getMaxX points
+        minY = getMinY points
+        maxY = getMaxY points
     in
-    (abs maxX) + (abs minX)
+    (abs maxY) + (abs minY)
 
-initialGrid :: Array Point -> Map Coords String
-initialGrid points =
+initialGrid :: Array Point -> Map Coords Cell
+initialGrid ps =
     let
+        points =
+            map
+                (\(Point { position, velocity }) ->
+                    Point
+                        { position : Tuple (Tuple.fst position / 10) (Tuple.snd position / 10)
+                        , velocity : velocity
+                        }
+                )
+                ps
+
         minX = getMinX points
         minY = getMinY points
         maxX = getMaxX points
@@ -263,19 +286,25 @@ initialGrid points =
         xs = Array.range minX maxX
         ys = Array.range minY maxY
 
-        -- _ = Debug.trace xs (\_ -> "")
-        -- _ = Debug.trace ys (\_ -> "")
-
         grid =
-            map (\coords -> Tuple coords ".")
-                $ Array.concat
-                $ map (\x -> map (Tuple x) ys) xs
+            Map.fromFoldable
+                $ map (\coords -> Tuple coords EmptyCell)
+                    $ Array.concat
+                    $ map (\x -> map (Tuple x) ys) xs
+
+        gridWithValues =
+            Array.foldl
+                (\res (Point point) ->
+                    Map.update (\v -> Just (PointCell [point.velocity])) point.position res
+                )
+                grid
+                points
     in
-    Map.fromFoldable grid
+    gridWithValues
 
 
-drawGrid :: Int -> Map Coords String -> String
-drawGrid rowSize grid =
+drawGrid :: Int -> Map Coords Cell -> String
+drawGrid rowSize_ grid =
     Array.foldl
         (\res val ->
             let
@@ -284,39 +313,193 @@ drawGrid rowSize grid =
             in
             -- Nasty console printing hack. + 2 is +1 because of the \n
             -- and the other one because there is a zero in between that we are not counting ?
-            if mod (String.length updatedRes) (rowSize + 2) == 0 then
+            if mod (String.length updatedRes) (rowSize_ + 2) == 0 then
                 updatedRes <> "\n"
             else
                 updatedRes
         )
         "\n"
-        (Array.fromFoldable $ Map.values grid)
+        (Array.fromFoldable $ map show $ Map.values grid)
+
+
+getPointCoords :: Map Coords Cell -> Array Coords
+getPointCoords grid =
+    Array.concat
+        $ map
+            (\key ->
+                case Map.lookup key grid of
+                    Just (PointCell coords) ->
+                        Array.replicate (Array.length coords) key
+                    _ ->
+                        [key]
+            )
+        $ Array.fromFoldable
+        $ Map.keys
+        $ Map.mapMaybe
+            (\val ->
+                case val of
+                    PointCell coords -> Just coords
+                    EmptyCell        -> Nothing
+            )
+            grid
+
+getPointValues :: Map Coords Cell -> Array Cell
+getPointValues grid =
+    Array.concat
+        $ map
+            (\val ->
+                case val of
+                    PointCell coords ->
+                        map (\c -> PointCell [c]) coords
+
+                    _ ->
+                        [val]
+            )
+        $ Array.fromFoldable
+        $ Map.values
+        $ Map.mapMaybe
+            (\val ->
+                case val of
+                    PointCell coords -> Just (PointCell coords)
+                    EmptyCell        -> Nothing
+            )
+            grid
+
+
+emptyCells :: Array Coords -> Map Coords Cell -> Map Coords Cell
+emptyCells keys grid =
+    Array.foldl
+        (\res key ->
+            Map.update (\v -> Just EmptyCell) key res
+        )
+        grid
+        keys
+
+
+keepUniques :: Array Coords -> Array Coords
+keepUniques =
+    Array.foldl
+        (\res cell ->
+            if Array.any ((==) cell) res then
+                res
+            else
+                Array.snoc res cell
+        )
+        []
+
+
+getVelocities :: Cell -> Array Coords
+getVelocities (PointCell velocities) = velocities
+getVelocities (EmptyCell)            = Debug.trace "Error on getVelocities" (\_ -> [])
+
+updatePointCells :: Array Coords -> Array Cell -> Map Coords Cell -> Map Coords Cell
+updatePointCells keys cells grid =
+    Array.foldl
+        (\res (Tuple key cell) ->
+            Map.update
+                (\val ->
+                    case val, cell of
+                        PointCell vc, PointCell cc ->
+                            Just (PointCell (keepUniques (cc <> vc)))
+
+                        _, _ ->
+                            Just cell
+                )
+                key
+                res
+        )
+        grid
+        (Array.zip keys cells)
+
+
+performTick :: Map Coords Cell -> Map Coords Cell
+performTick grid =
+    let
+        sourceCoords =
+            getPointCoords grid
+
+        pointCells =
+            getPointValues grid
+
+        destCoords =
+            Array.zipWith
+                (\coords cell ->
+                    case cell of
+                        PointCell coords_ ->
+                            case Array.head coords_ of
+                                Just (Tuple x y) ->
+                                    Tuple (Tuple.fst coords + x) (Tuple.snd coords + y)
+
+                                Nothing ->
+                                    coords
+
+                        EmptyCell ->
+                            let
+                                _ = Debug.trace "Error while getting new Coords!" (\_ -> "")
+                            in
+                            coords
+                )
+                sourceCoords
+                pointCells
+    in
+    updatePointCells destCoords pointCells
+        $ emptyCells sourceCoords grid
+
+
 
 drawPositions :: Array Point -> String
 drawPositions points =
     let
-        -- points_ =
-        --     Array.sort points
-
-
-        rowSize =
+        rowSize_ =
             getRowSize points
 
-        -- _ = Debug.trace (show $ initialGrid points) (\_ -> "")
-        -- _ = Debug.trace (show $ initialGrid points) (\_ -> "")
+        initialGrid_ =
+            initialGrid points
     in
-    -- show points
-    drawGrid rowSize (initialGrid points)
+    drawGrid rowSize_ (performTick $ performTick $ performTick $ performTick initialGrid_)
+
+solve :: Map Coords Cell -> String
+solve grid =
+    let
+        points =
+            map
+                (\c -> Point { position : c, velocity : Tuple 0 0 })
+                $ getPointCoords grid
+
+        xDiff = (getMaxX points) - (getMinX points) + 1
+        yDiff = (getMaxY points) - (getMinY points) + 1
+
+    in go xDiff yDiff grid
+    where go prevXDiff prevYDiff grid_ =
+            let
+                updatedGrid =
+                    performTick grid_
+
+                points =
+                    map (\c -> Point { position : c, velocity : Tuple 0 0 })
+                        $ getPointCoords updatedGrid
+
+                nextXDiff = (getMaxX points) - (getMinX points) + 1
+                nextYDiff = (getMaxY points) - (getMinY points) + 1
+            in
+            if nextXDiff > prevXDiff && nextYDiff > prevYDiff then
+                drawGrid 21 grid_
+            else
+                go nextXDiff nextYDiff updatedGrid
 
 
 firstChallenge :: Effect Unit
 firstChallenge = do
-    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10e.txt")
+    contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10.txt")
     Console.log
         -- $ show
         -- $ (\_ -> show "")
         -- $ show
-        $ drawPositions
+        -- $ drawPositions
+        -- $ solve
+        -- $ drawGrid 120
+        $ (\_ -> "")
+        $ initialGrid
         $ map parsePoint
         $ map (StringUtils.removeAll "\r")
         $ getInputLines contents
