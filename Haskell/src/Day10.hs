@@ -339,9 +339,10 @@ solve :: Map Coords Cell -> String
 solve grid =
     let
         points = map (\c -> Point c (0, 0)) $ getPointCoords grid
-        xDiff = (getMaxX points) - (getMinX points) + 1
-        yDiff = (getMaxY points) - (getMinY points) + 1
+        -- xDiff = (getMaxX points) - (getMinX points) + 1
+        -- yDiff = (getMaxY points) - (getMinY points) + 1
 
+    {-
     in go xDiff yDiff grid
     where go prevXDiff prevYDiff grid_ =
             let
@@ -355,6 +356,18 @@ solve grid =
                 drawGrid 120 grid_
             else
                 go nextXDiff nextYDiff updatedGrid
+    -}
+    in go grid
+    where go grid_ =
+            let
+                updatedGrid = performTick grid_
+                points = map (\c -> Point c (0, 0)) $ getPointCoords updatedGrid
+                rowSize = getRowSize points
+            in
+            if rowSize < 300 then
+                drawGrid 300 grid_
+            else
+                go updatedGrid
 
 
 firstChallenge :: IO ()
