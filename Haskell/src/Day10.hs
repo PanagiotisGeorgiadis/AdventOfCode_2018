@@ -4,28 +4,6 @@ module Day10 where
 
 import Prelude
 
--- import Data.Array as Array
--- import Data.Foldable (sum)
--- import Data.FunctorWithIndex (mapWithIndex)
--- import Data.Int as Int
--- import Data.Map (Map(..), values)
--- import Data.Map as Map
--- import Data.Maybe (Maybe(..))
--- import Data.Maybe as Maybe
--- import Data.Ord (abs)
--- import Data.String as String
--- import Data.Tuple (Tuple(..))
--- import Data.Tuple as Tuple
--- import Debug.Trace as Debug
--- import Effect (Effect)
--- import Effect.Console as Console
--- import Effect.Exception (try)
--- import Node.Encoding (Encoding(..))
--- import Node.FS.Sync (readTextFile)
--- import Utils.Helpers (getInputLines)
--- import Utils.String as StringUtils
-
--- import qualified Data.Sequence as Seq
 import qualified Data.Maybe    as Maybe
 
 import qualified Data.List     as List
@@ -45,19 +23,7 @@ import Data.Map       (Map)
 type Coords = (Int, Int)
 
 data Point = Point Coords Coords
-    -- { position :: Coords
-    -- , velocity :: Coords
-    -- } deriving Show
     deriving Show
-
--- instance showPoint :: Show Point
---     where show (Point obj) = show obj
---
--- instance pointEq :: Eq Point
---     where eq (Point lhs) (Point rhs) = lhs.position == rhs.position
---
--- instance pointOrd :: Ord Point
---     where compare (Point lhs) (Point rhs) = compare lhs.position rhs.position
 
 
 data Cell = PointCell [Coords] | EmptyCell
@@ -65,17 +31,13 @@ data Cell = PointCell [Coords] | EmptyCell
 instance Show Cell
     where show (PointCell _) = "#"
           show EmptyCell     = "."
---
--- instance cellEq :: Eq Cell
---     where eq (PointCell lhs) (PointCell rhs) = lhs == rhs
---           eq (PointCell lhs) EmptyCell       = false
---           eq EmptyCell       (PointCell rhs) = false
---           eq EmptyCell       EmptyCell       = true
+
 
 getDigits :: String -> Int
 getDigits (x:xs)
     | x == '-'  = negate $ fst $ fromRight (0,"") $ decimal $ Text.pack xs
     | otherwise = fst $ fromRight (0,"") $ decimal $ Text.pack (x:xs)
+
 
 parsePoint :: Text -> Point
 parsePoint line =
@@ -90,7 +52,6 @@ parsePoint line =
                 $ Text.splitOn ">" line
 
         velocities =
-            -- map (fst . fromRight (0, "") . decimal . Text.strip)
             map (getDigits . Text.unpack . Text.strip)
                 $ Text.splitOn ","
                 $ Text.replace "velocity=<" ""
@@ -98,13 +59,11 @@ parsePoint line =
                 $ head
                 $ drop 1
                 $ Text.splitOn ">" line
-
-        -- positions  = [1, 2]
-        -- velocities = [3, 4]
     in
     Point
         ( head (reverse positions),  head positions )
         ( head (reverse velocities), head velocities )
+
 
 getMinX :: [Point] -> Int
 getMinX =
@@ -116,6 +75,7 @@ getMinX =
                 res
         )
         0
+
 
 getMaxX :: [Point] -> Int
 getMaxX =
@@ -152,6 +112,7 @@ getMaxY =
         )
         0
 
+
 getRowSize :: [Point] -> Int
 getRowSize points =
     let
@@ -159,6 +120,55 @@ getRowSize points =
         maxY = getMaxY points
     in
     (abs maxY) + (abs minY)
+
+
+performTick :: [Point] -> [Point]
+performTick =
+    map
+        (\(Point coords vel) ->
+            Point
+                ( fst coords + fst vel
+                , snd coords + snd vel
+                )
+                vel
+        )
+
+
+shrinkPoints :: Int -> [Point] -> [Point]
+shrinkPoints prevRowSize points =
+    let
+        updatedPoints = performTick points
+           {- map
+                (\(Point coords vel) ->
+                    Point
+                        ( fst coords + fst vel
+                        , snd coords + snd vel
+                        )
+                        vel
+                )
+                points
+           -}
+
+        rowSize = getRowSize updatedPoints
+    in
+    if prevRowSize < rowSize then
+        points
+    else
+        shrinkPoints rowSize updatedPoints
+
+
+shrinkPointsTime :: Int -> [Point] -> Int
+shrinkPointsTime size = go 0 size
+    where go secs prevRowSize points =
+            let
+                updatedPoints = performTick points
+                rowSize       = getRowSize updatedPoints
+            in
+            if prevRowSize < rowSize then
+                secs
+            else
+                go (secs + 1) rowSize updatedPoints
+
 
 initialGrid :: [Point] -> Map Coords Cell
 initialGrid points =
@@ -188,9 +198,33 @@ initialGrid points =
     gridWithValues
 
 
-drawGrid :: Int -> Map Coords Cell -> String
-drawGrid rowSize_ grid =
-    foldl'
+trimRowPadding :: String -> String
+trimRowPadding =
+    snd
+    . foldl'
+        (\(isValid, res) char ->
+            if isValid || char == '#' then
+                ( True
+                , res ++ [ char ]
+                )
+            else
+                ( isValid
+                , res
+                )
+        )
+        (False, "")
+
+
+drawGrid :: [Point] -> Map Coords Cell -> String
+drawGrid points grid =
+    let
+        rowSize_ = getRowSize points
+    in
+    unlines
+    $ map (trimRowPadding)
+    $ filter (any ((==) '#'))
+    $ lines
+    $ foldl'
         (\res val ->
             let
                 updatedRes =
@@ -207,204 +241,25 @@ drawGrid rowSize_ grid =
         (map show $ Map.elems grid)
 
 
-getPointCoords :: Map Coords Cell -> [Coords]
-getPointCoords grid =
-    concat
-        $ map
-            (\key ->
-                case Map.lookup key grid of
-                    Just (PointCell velocities) ->
-                        replicate (length velocities) key
-                    _ ->
-                        [key]
-            )
-        $ Map.keys
-        $ Map.mapMaybe
-            (\val ->
-                case val of
-                    PointCell coords -> Just coords
-                    EmptyCell        -> Nothing
-            )
-            grid
-
-getPointValues :: Map Coords Cell -> [Cell]
-getPointValues grid =
-    concat
-        $ map
-            (\val ->
-                case val of
-                    PointCell coords ->
-                        map (\c -> PointCell [c]) coords
-
-                    _ ->
-                        [ val ]
-            )
-        $ Map.elems
-        $ Map.mapMaybe
-            (\val ->
-                case val of
-                    PointCell coords -> Just (PointCell coords)
-                    EmptyCell        -> Nothing
-            )
-            grid
-
-
-emptyCells :: [Coords] -> Map Coords Cell -> Map Coords Cell
-emptyCells keys grid =
-    foldl'
-        (\res key ->
-            Map.update (\v -> Just EmptyCell) key res
-        )
-        grid
-        keys
-
-
-keepUniques :: [Coords] -> [Coords]
-keepUniques =
-    foldl'
-        (\res cell ->
-            if any ((==) cell) res then
-                res
-            else
-                res ++ [ cell ]
-        )
-        []
-
-
-getVelocities :: Cell -> [Coords]
-getVelocities (PointCell velocities) = velocities
--- getVelocities (EmptyCell)            = Debug.trace "Error on getVelocities" (\_ -> [])
-getVelocities (EmptyCell)            = []
-
-
-updatePointCells :: [Coords] -> [Cell] -> Map Coords Cell -> Map Coords Cell
-updatePointCells keys cells grid =
-    foldl'
-        (\res (key, cell) ->
-            Map.update
-                (\val ->
-                    case (val, cell) of
-                        (PointCell vc, PointCell cc) ->
-                            Just (PointCell (keepUniques (cc ++ vc)))
-
-                        _ ->
-                            Just cell
-                )
-                key
-                res
-        )
-        grid
-        (zip keys cells)
-
-
-performTick :: Map Coords Cell -> Map Coords Cell
-performTick grid =
-    let
-        sourceCoords = getPointCoords grid
-        pointCells = getPointValues grid
-
-        destCoords =
-            zipWith
-                (\coords cell ->
-                    case cell of
-                        PointCell coords_ ->
-                            let
-                                (x, y) = head coords_
-                            in
-                            (fst coords + x, snd coords + y)
-
-                        EmptyCell ->
-                            -- let
-                            --    _ = Debug.trace "Error while getting new Coords!" (\_ -> "")
-                            -- in
-                            coords
-                )
-                sourceCoords
-                pointCells
-    in
-    updatePointCells destCoords pointCells
-        $ emptyCells sourceCoords grid
-
-
-drawPositions :: [Point] -> String
-drawPositions points =
-    let
-        rowSize_ = getRowSize points
-        initialGrid_ = initialGrid points
-    in
-    drawGrid 21 (performTick $ performTick $ performTick initialGrid_)
-
-
-solve :: Map Coords Cell -> String
-solve grid =
-    let
-        points = map (\c -> Point c (0, 0)) $ getPointCoords grid
-        -- xDiff = (getMaxX points) - (getMinX points) + 1
-        -- yDiff = (getMaxY points) - (getMinY points) + 1
-
-    {-
-    in go xDiff yDiff grid
-    where go prevXDiff prevYDiff grid_ =
-            let
-                updatedGrid = performTick grid_
-                points = map (\c -> Point c (0, 0)) $ getPointCoords updatedGrid
-                nextXDiff = (getMaxX points) - (getMinX points) + 1
-                nextYDiff = (getMaxY points) - (getMinY points) + 1
-            in
-            if nextXDiff > prevXDiff && nextYDiff > prevYDiff then
-                -- drawGrid 21 grid_
-                drawGrid 120 grid_
-            else
-                go nextXDiff nextYDiff updatedGrid
-    -}
-    in go grid
-    where go grid_ =
-            let
-                updatedGrid = performTick grid_
-                points = map (\c -> Point c (0, 0)) $ getPointCoords updatedGrid
-                rowSize = getRowSize points
-            in
-            if rowSize < 300 then
-                drawGrid 300 grid_
-            else
-                go updatedGrid
-
-
 firstChallenge :: IO ()
 firstChallenge = do
     contents <- readFile "PuzzleInputs/Day10.txt"
     putStrLn
-        -- $ show
-        -- $ drawPositions
-        $ solve
-        $ initialGrid
+        $ (\points -> drawGrid points (initialGrid points))
+        $ (\points -> shrinkPoints (getRowSize points) points)
         $ map parsePoint
         $ Text.lines
         $ Text.pack contents
 
-    -- contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10.txt")
-    -- Console.log
-        -- $ show
-        -- $ (\_ -> show "")
-        -- $ show
-        -- $ drawPositions
-        -- $ solve
-        -- $ drawGrid 120
-        --
-        -- $ (\_ -> "")
-        -- $ initialGrid
-        -- $ map parsePoint
-        -- $ map (StringUtils.removeAll "\r")
-        -- $ getInputLines contents
-    -- $ map parsePoint
-    -- $ lines
+
+secondChallenge :: IO () 
+secondChallenge = do
+    contents <- readFile "PuzzleInputs/Day10.txt"
+    putStrLn
+        $ show
+        $ (\points -> shrinkPointsTime (getRowSize points) points) 
+        $ map parsePoint
+        $ Text.lines
+        $ Text.pack contents
 
 
-secondChallenge :: String
-secondChallenge =
-    -- contents <- try (readTextFile UTF8 "./src/PuzzleInputs/Day10.txt")
-    -- Console.log
-    --     $ show
-    --     $ map (StringUtils.removeAll "\r")
-    --     $ getInputLines contents
-    ""
