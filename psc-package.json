@@ -4,6 +4,7 @@
   "source": "https://github.com/PanagiotisGeorgiadis/package-sets",
   "depends": [
     "aff",
+    "control",
     "debug",
     "exceptions",
     "node-fs",
